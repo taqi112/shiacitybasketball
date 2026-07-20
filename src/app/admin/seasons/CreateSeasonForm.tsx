@@ -1,0 +1,70 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { createSeason } from "./actions";
+import { SubmitButton } from "@/components/SubmitButton";
+import { FormError } from "@/components/FormError";
+import { datetimeLocalToIso } from "@/lib/datetime";
+
+const inputClass =
+  "rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black";
+
+export function CreateSeasonForm() {
+  const [state, formAction] = useActionState(createSeason, undefined);
+  const [opensAtLocal, setOpensAtLocal] = useState("");
+  const [closesAtLocal, setClosesAtLocal] = useState("");
+
+  return (
+    <form action={formAction} className="flex flex-col gap-4 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]">
+      <h2 className="font-medium">Create a season</h2>
+      <input type="hidden" name="registrationOpensAt" value={datetimeLocalToIso(opensAtLocal)} />
+      <input type="hidden" name="registrationClosesAt" value={datetimeLocalToIso(closesAtLocal)} />
+      <FormError message={state?.error} />
+      <div className="flex flex-col gap-1">
+        <label htmlFor="name" className="text-sm font-medium">
+          Name
+        </label>
+        <input id="name" name="name" required className={inputClass} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="registrationOpensAtLocal" className="text-sm font-medium">
+          Registration opens
+        </label>
+        <input
+          id="registrationOpensAtLocal"
+          type="datetime-local"
+          value={opensAtLocal}
+          onChange={(e) => setOpensAtLocal(e.target.value)}
+          required
+          className={inputClass}
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="registrationClosesAtLocal" className="text-sm font-medium">
+          Registration closes (optional)
+        </label>
+        <input
+          id="registrationClosesAtLocal"
+          type="datetime-local"
+          value={closesAtLocal}
+          onChange={(e) => setClosesAtLocal(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="maxPlayers" className="text-sm font-medium">
+          Player cap (optional)
+        </label>
+        <input
+          id="maxPlayers"
+          name="maxPlayers"
+          type="number"
+          min={1}
+          placeholder="e.g. 60"
+          className={inputClass}
+        />
+      </div>
+      <SubmitButton>Create season</SubmitButton>
+    </form>
+  );
+}
