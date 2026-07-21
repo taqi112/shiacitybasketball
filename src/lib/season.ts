@@ -33,3 +33,19 @@ export const getOpenSeason = cache(async () => {
 
   return season;
 });
+
+// The next season whose registration window hasn't opened yet, if any.
+export const getNextSeason = cache(async () => {
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+
+  const { data } = await supabase
+    .from("seasons")
+    .select("*")
+    .gt("registration_opens_at", now)
+    .order("registration_opens_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  return data;
+});

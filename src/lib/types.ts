@@ -12,6 +12,7 @@ export interface Profile {
   self_rank: number | null;
   jersey_size: string | null;
   played_before: boolean | null;
+  age: number | null;
   is_admin: boolean;
   created_at: string;
 }
@@ -32,5 +33,10 @@ export interface SeasonRegistration {
   team_id: string | null;
   jersey_number: number | null;
   is_captain: boolean;
+  availability_notes: string | null;
+  captain_preference: string[] | null;
+  waiver_consent: boolean;
+  payment_confirmed: boolean;
+  payment_verified: boolean;
   registered_at: string;
 }

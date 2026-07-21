@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { login } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
+import { inputClass } from "@/lib/ui";
 
 export function LoginForm({ next }: { next: string }) {
   const [state, formAction] = useActionState(login, undefined);
@@ -21,7 +22,7 @@ export function LoginForm({ next }: { next: string }) {
           name="email"
           type="email"
           required
-          className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className={inputClass}
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -33,7 +34,7 @@ export function LoginForm({ next }: { next: string }) {
           name="password"
           type="password"
           required
-          className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className={inputClass}
         />
       </div>
       <SubmitButton>Log in</SubmitButton>

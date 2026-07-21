@@ -5,9 +5,7 @@ import { createSeason } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
 import { datetimeLocalToIso } from "@/lib/datetime";
-
-const inputClass =
-  "rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black";
+import { inputClass } from "@/lib/ui";
 
 export function CreateSeasonForm() {
   const [state, formAction] = useActionState(createSeason, undefined);
@@ -15,7 +13,7 @@ export function CreateSeasonForm() {
   const [closesAtLocal, setClosesAtLocal] = useState("");
 
   return (
-    <form action={formAction} className="flex flex-col gap-4 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]">
+    <form action={formAction} className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
       <h2 className="font-medium">Create a season</h2>
       <input type="hidden" name="registrationOpensAt" value={datetimeLocalToIso(opensAtLocal)} />
       <input type="hidden" name="registrationClosesAt" value={datetimeLocalToIso(closesAtLocal)} />

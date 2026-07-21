@@ -1,22 +1,45 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { updateProfile } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
 import type { Profile } from "@/lib/types";
-
-const inputClass =
-  "rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black";
+import { inputClass } from "@/lib/ui";
 
 export function ProfileForm({ profile }: { profile: Profile }) {
   const [state, formAction] = useActionState(updateProfile, undefined);
+  const [isPending, startTransition] = useTransition();
+
+  // Submitting via onSubmit + startTransition instead of <form action={formAction}>
+  // deliberately -- a form using the action prop directly gets its fields
+  // reset to their original server-rendered defaults after a successful
+  // submission (React's built-in behavior, meant for "create new record"
+  // forms). That's wrong for an edit-in-place form like this one: it kept
+  // snapping Position/Self ranking/Jersey size back to their placeholder
+  // even though the save itself had already succeeded.
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    startTransition(() => {
+      formAction(formData);
+    });
+  }
+
+  const [position, setPosition] = useState(profile.position ?? "");
+  const [selfRank, setSelfRank] = useState(
+    profile.self_rank != null ? String(profile.self_rank) : "",
+  );
+  const [jerseySize, setJerseySize] = useState(profile.jersey_size ?? "");
+  const [playedBefore, setPlayedBefore] = useState(
+    profile.played_before == null ? "" : String(profile.played_before),
+  );
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <FormError message={state?.error} />
       {state?.success && (
-        <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+        <p className="rounded-md border border-emerald-900/40 bg-emerald-950/50 px-3 py-2 text-sm text-emerald-300">
           Profile updated.
         </p>
       )}
@@ -48,12 +71,22 @@ export function ProfileForm({ profile }: { profile: Profile }) {
         <label htmlFor="position" className="text-sm font-medium">
           Position
         </label>
-        <input
+        <select
           id="position"
           name="position"
-          defaultValue={profile.position ?? ""}
+          value={position}
+          onChange={(e) => setPosition(e.target.value)}
           className={inputClass}
-        />
+        >
+          <option value="" disabled>
+            Select a position
+          </option>
+          <option value="Point Guard">Point Guard</option>
+          <option value="Shooting Guard">Shooting Guard</option>
+          <option value="Small Forward">Small Forward</option>
+          <option value="Power Forward">Power Forward</option>
+          <option value="Center">Center</option>
+        </select>
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="height" className="text-sm font-medium">
@@ -73,7 +106,8 @@ export function ProfileForm({ profile }: { profile: Profile }) {
         <select
           id="selfRank"
           name="selfRank"
-          defaultValue={profile.self_rank ?? ""}
+          value={selfRank}
+          onChange={(e) => setSelfRank(e.target.value)}
           className={inputClass}
         >
           <option value="" disabled>
@@ -83,7 +117,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           <option value="2">2</option>
           <option value="3">3</option>
           <option value="4">4</option>
-          <option value="5">5 - Really good player</option>
+          <option value="5">5 - Advanced</option>
         </select>
       </div>
       <div className="flex flex-col gap-1">
@@ -93,7 +127,8 @@ export function ProfileForm({ profile }: { profile: Profile }) {
         <select
           id="jerseySize"
           name="jerseySize"
-          defaultValue={profile.jersey_size ?? ""}
+          value={jerseySize}
+          onChange={(e) => setJerseySize(e.target.value)}
           className={inputClass}
         >
           <option value="" disabled>
@@ -115,7 +150,8 @@ export function ProfileForm({ profile }: { profile: Profile }) {
               type="radio"
               name="playedBefore"
               value="true"
-              defaultChecked={profile.played_before === true}
+              checked={playedBefore === "true"}
+              onChange={() => setPlayedBefore("true")}
               required
             />
             Yes
@@ -125,14 +161,15 @@ export function ProfileForm({ profile }: { profile: Profile }) {
               type="radio"
               name="playedBefore"
               value="false"
-              defaultChecked={profile.played_before === false}
+              checked={playedBefore === "false"}
+              onChange={() => setPlayedBefore("false")}
               required
             />
             No
           </label>
         </div>
       </fieldset>
-      <SubmitButton>Save changes</SubmitButton>
+      <SubmitButton pending={isPending}>Save changes</SubmitButton>
     </form>
   );
 }

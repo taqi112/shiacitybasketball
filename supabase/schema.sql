@@ -25,7 +25,7 @@ create table public.profiles (
   position text,
   height text,
   photo_url text,
-  -- self-assessed skill level: 1 = very beginner, 5 = really good player
+  -- self-assessed skill level: 1 = very beginner, 5 = advanced
   self_rank int check (self_rank between 1 and 5),
   jersey_size text,
   played_before boolean,
@@ -220,3 +220,72 @@ $$;
 create trigger enforce_season_capacity_trigger
   before insert on public.season_registrations
   for each row execute function public.enforce_season_capacity();
+
+-- Age is a personal attribute like height/position, not season-specific.
+alter table public.profiles add column age int check (age > 0 and age <= 100);
+
+-- These four are season-specific (different schedule/captains/fee each
+-- season), so they live on season_registrations rather than profiles --
+-- unlike self_rank/jersey_size/played_before, a returning player's answers
+-- here shouldn't carry over from a prior season.
+alter table public.season_registrations
+  add column availability_notes text,
+  add column captain_preference text[],
+  add column waiver_consent boolean not null default false,
+  add column payment_confirmed boolean not null default false;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (
+    id, full_name, email, phone, position, height,
+    self_rank, jersey_size, played_before, age
+  )
+  values (
+    new.id,
+    new.raw_user_meta_data->>'full_name',
+    new.email,
+    new.raw_user_meta_data->>'phone',
+    new.raw_user_meta_data->>'position',
+    new.raw_user_meta_data->>'height',
+    (new.raw_user_meta_data->>'self_rank')::int,
+    new.raw_user_meta_data->>'jersey_size',
+    (new.raw_user_meta_data->>'played_before')::boolean,
+    (new.raw_user_meta_data->>'age')::int
+  );
+
+  if (new.raw_user_meta_data->>'season_id') is not null then
+    insert into public.season_registrations (
+      season_id, profile_id, availability_notes, captain_preference,
+      waiver_consent, payment_confirmed
+    )
+    values (
+      (new.raw_user_meta_data->>'season_id')::uuid,
+      new.id,
+      new.raw_user_meta_data->>'availability_notes',
+      case
+        when new.raw_user_meta_data->'captain_preference' is not null
+          then array(select jsonb_array_elements_text(new.raw_user_meta_data->'captain_preference'))
+        else null
+      end,
+      coalesce((new.raw_user_meta_data->>'waiver_consent')::boolean, false),
+      coalesce((new.raw_user_meta_data->>'payment_confirmed')::boolean, false)
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+-- payment_confirmed (above) is just the player's self-reported claim --
+-- easy to lie about since payment is via Zelle with no API to verify
+-- against. payment_verified is the admin's actual confirmation after
+-- checking the real Zelle account, and is the real gate for the draft pool.
+alter table public.season_registrations add column payment_verified boolean not null default false;
+
+create policy "Admins can update registrations"
+  on public.season_registrations for update
+  using (public.is_admin());

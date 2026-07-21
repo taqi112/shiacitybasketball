@@ -89,3 +89,19 @@ export async function updateSeason(
   revalidatePath("/admin/seasons");
   return undefined;
 }
+
+export async function toggleRegistrationPaymentVerified(formData: FormData) {
+  await requireAdmin();
+
+  const registrationId = String(formData.get("registrationId") ?? "");
+  const seasonId = String(formData.get("seasonId") ?? "");
+  const verified = formData.get("verified") === "true";
+
+  const supabase = await createClient();
+  await supabase
+    .from("season_registrations")
+    .update({ payment_verified: verified })
+    .eq("id", registrationId);
+
+  revalidatePath(`/admin/seasons/${seasonId}`);
+}

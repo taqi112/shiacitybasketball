@@ -20,10 +20,10 @@ export default async function AdminSeasonsPage() {
             <li key={season.id}>
               <Link
                 href={`/admin/seasons/${season.id}`}
-                className="flex flex-col gap-1 rounded-md border border-black/[.08] px-4 py-4 hover:bg-black/[.02] dark:border-white/[.145] dark:hover:bg-white/[.05]"
+                className="flex flex-col gap-1 rounded-md border border-border px-4 py-4 hover:bg-white/[.05]"
               >
                 <span className="font-medium">{season.name}</span>
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                <span className="text-sm text-muted-foreground">
                   Opens {new Date(season.registration_opens_at).toLocaleDateString()}
                   {season.max_players != null && ` · cap ${season.max_players}`}
                 </span>
@@ -31,7 +31,7 @@ export default async function AdminSeasonsPage() {
             </li>
           ))}
           {!seasons?.length && (
-            <li className="text-sm text-zinc-600 dark:text-zinc-400">No seasons yet.</li>
+            <li className="text-sm text-muted-foreground">No seasons yet.</li>
           )}
         </ul>
       </div>

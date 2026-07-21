@@ -30,7 +30,7 @@ export default async function ProfilePage() {
       <div>
         <h1 className="text-xl font-semibold">Your profile</h1>
         {registration?.seasons && (
-          <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="mt-2 text-sm text-muted-foreground">
             <p>Registered for {registration.seasons.name}</p>
             <p>
               Team: {registration.team_id ? "Assigned" : "Not assigned yet"}

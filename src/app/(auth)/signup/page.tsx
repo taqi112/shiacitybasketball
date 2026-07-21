@@ -9,7 +9,7 @@ export default async function SignupPage() {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="text-xl font-semibold">Registration is closed</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-muted-foreground">
           There&apos;s no open registration window right now. Check back soon.
         </p>
         <p className="text-sm">
@@ -32,7 +32,7 @@ export default async function SignupPage() {
       <div>
         <h1 className="text-xl font-semibold">Sign up for {season.name}</h1>
         {spotsRemaining != null && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             {spotsRemaining} spot{spotsRemaining === 1 ? "" : "s"} left
           </p>
         )}
