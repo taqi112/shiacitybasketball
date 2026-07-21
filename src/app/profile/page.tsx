@@ -5,7 +5,10 @@ import type { Profile, Season, SeasonRegistration } from "@/lib/types";
 
 type RegistrationWithSeason = SeasonRegistration & { seasons: Season | null };
 
-export default async function ProfilePage() {
+export default async function ProfilePage({ searchParams }: PageProps<"/profile">) {
+  const params = await searchParams;
+  const photoFailed = params.photo === "failed";
+
   const user = await requireUser();
   const supabase = await createClient();
 
@@ -27,6 +30,12 @@ export default async function ProfilePage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-8 px-4 py-12">
+      {photoFailed && (
+        <p className="rounded-md border border-amber-900/40 bg-amber-950/50 px-3 py-2 text-sm text-amber-300">
+          Your account was created, but we couldn&apos;t upload your profile picture. Try
+          uploading it again below.
+        </p>
+      )}
       <div>
         <h1 className="text-xl font-semibold">Your profile</h1>
         {registration?.seasons && (
@@ -43,7 +52,11 @@ export default async function ProfilePage() {
           </div>
         )}
       </div>
-      <ProfileForm profile={profile} />
+      <ProfileForm
+        profile={profile}
+        registrationId={registration?.id ?? null}
+        jerseyNumber={registration?.jersey_number ?? null}
+      />
     </div>
   );
 }

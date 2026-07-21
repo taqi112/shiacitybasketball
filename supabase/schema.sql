@@ -289,3 +289,49 @@ alter table public.season_registrations add column payment_verified boolean not 
 create policy "Admins can update registrations"
   on public.season_registrations for update
   using (public.is_admin());
+
+-- "Users can update their own registration" (row-level, not column-level)
+-- lets a player self-report jersey_number, which is the point -- but as
+-- written it would also let them set is_captain/team_id on themselves via
+-- a direct API call. Reverts those two fields to their prior value unless
+-- the actor is an admin, same pattern as protect_is_admin.
+create or replace function public.protect_registration_admin_fields()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if auth.uid() is not null and not public.is_admin() then
+    if new.is_captain is distinct from old.is_captain then
+      new.is_captain := old.is_captain;
+    end if;
+    if new.team_id is distinct from old.team_id then
+      new.team_id := old.team_id;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger protect_registration_admin_fields_trigger
+  before update on public.season_registrations
+  for each row execute function public.protect_registration_admin_fields();
+
+-- Avatars bucket: public read (served via getPublicUrl), writes restricted
+-- to each user's own folder (path is always "<user id>/avatar", no file
+-- extension, so re-uploads cleanly overwrite in place instead of piling up).
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+create policy "Users can upload their own avatar"
+  on storage.objects for insert
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "Users can update their own avatar"
+  on storage.objects for update
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "Users can delete their own avatar"
+  on storage.objects for delete
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);

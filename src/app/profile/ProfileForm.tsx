@@ -4,10 +4,19 @@ import { useActionState, useState, useTransition } from "react";
 import { updateProfile } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
+import { AvatarInput } from "@/components/AvatarInput";
 import type { Profile } from "@/lib/types";
 import { inputClass } from "@/lib/ui";
 
-export function ProfileForm({ profile }: { profile: Profile }) {
+export function ProfileForm({
+  profile,
+  registrationId,
+  jerseyNumber,
+}: {
+  profile: Profile;
+  registrationId: string | null;
+  jerseyNumber: number | null;
+}) {
   const [state, formAction] = useActionState(updateProfile, undefined);
   const [isPending, startTransition] = useTransition();
 
@@ -43,6 +52,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           Profile updated.
         </p>
       )}
+      <AvatarInput name="photo" currentUrl={profile.photo_url} />
       <div className="flex flex-col gap-1">
         <label htmlFor="fullName" className="text-sm font-medium">
           Full name
@@ -142,6 +152,24 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           <option value="XXL">XXL</option>
         </select>
       </div>
+      {registrationId && (
+        <div className="flex flex-col gap-1">
+          <input type="hidden" name="registrationId" value={registrationId} />
+          <label htmlFor="jerseyNumber" className="text-sm font-medium">
+            Jersey number
+          </label>
+          <input
+            id="jerseyNumber"
+            name="jerseyNumber"
+            type="number"
+            min={0}
+            max={99}
+            defaultValue={jerseyNumber ?? ""}
+            placeholder="Enter once known"
+            className={inputClass}
+          />
+        </div>
+      )}
       <fieldset className="flex flex-col gap-1">
         <legend className="text-sm font-medium">Did you play in past seasons?</legend>
         <div className="flex gap-4">

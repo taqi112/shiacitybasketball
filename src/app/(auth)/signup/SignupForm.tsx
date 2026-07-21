@@ -5,6 +5,7 @@ import { signup } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
 import { BubbleCheckbox } from "@/components/BubbleCheckbox";
+import { AvatarInput } from "@/components/AvatarInput";
 import { inputClass } from "@/lib/ui";
 
 const CAPTAINS = [
@@ -44,7 +45,10 @@ export function SignupForm() {
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <FormError message={state?.error} />
-      <p className="text-sm text-muted-foreground">All fields are required.</p>
+      <p className="text-sm text-muted-foreground">
+        All fields are required except your profile picture.
+      </p>
+      <AvatarInput name="photo" />
       <div className="flex flex-col gap-1">
         <label htmlFor="fullName" className="text-sm font-medium">
           Full name
