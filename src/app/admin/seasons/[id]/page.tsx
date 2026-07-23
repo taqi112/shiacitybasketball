@@ -61,6 +61,7 @@ export default async function AdminSeasonDetailPage({
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border">
+                <th className="px-4 py-2">Photo</th>
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Contact</th>
                 <th className="px-4 py-2">Jersey #</th>
@@ -74,6 +75,20 @@ export default async function AdminSeasonDetailPage({
             <tbody>
               {registrants?.map((registrant) => (
                 <tr key={registrant.id} className="border-b border-border last:border-0">
+                  <td className="px-4 py-2">
+                    {registrant.profiles?.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={registrant.profiles.photo_url}
+                        alt={registrant.profiles.full_name}
+                        className="h-10 w-10 rounded-full border border-border object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-xs text-muted-foreground">
+                        {registrant.profiles?.full_name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-2">{registrant.profiles?.full_name}</td>
                   <td className="px-4 py-2">
                     {registrant.profiles?.email}
@@ -123,7 +138,7 @@ export default async function AdminSeasonDetailPage({
               ))}
               {!registrants?.length && (
                 <tr>
-                  <td className="px-4 py-2 text-muted-foreground" colSpan={8}>
+                  <td className="px-4 py-2 text-muted-foreground" colSpan={9}>
                     No registrants yet.
                   </td>
                 </tr>
