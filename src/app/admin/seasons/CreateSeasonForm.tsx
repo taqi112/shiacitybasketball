@@ -14,7 +14,7 @@ export function CreateSeasonForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
-      <h2 className="font-medium">Create a season</h2>
+      <h2 className="font-medium">Create a Season</h2>
       <input type="hidden" name="registrationOpensAt" value={datetimeLocalToIso(opensAtLocal)} />
       <input type="hidden" name="registrationClosesAt" value={datetimeLocalToIso(closesAtLocal)} />
       <FormError message={state?.error} />
@@ -26,7 +26,7 @@ export function CreateSeasonForm() {
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="registrationOpensAtLocal" className="text-sm font-medium">
-          Registration opens
+          Registration Opens
         </label>
         <input
           id="registrationOpensAtLocal"
@@ -39,7 +39,7 @@ export function CreateSeasonForm() {
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="registrationClosesAtLocal" className="text-sm font-medium">
-          Registration closes (optional)
+          Registration Closes (optional)
         </label>
         <input
           id="registrationClosesAtLocal"
@@ -51,7 +51,7 @@ export function CreateSeasonForm() {
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="maxPlayers" className="text-sm font-medium">
-          Player cap (optional)
+          Player Cap (optional)
         </label>
         <input
           id="maxPlayers"
@@ -62,7 +62,7 @@ export function CreateSeasonForm() {
           className={inputClass}
         />
       </div>
-      <SubmitButton>Create season</SubmitButton>
+      <SubmitButton>Create Season</SubmitButton>
     </form>
   );
 }

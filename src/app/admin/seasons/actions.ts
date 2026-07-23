@@ -105,3 +105,108 @@ export async function toggleRegistrationPaymentVerified(formData: FormData) {
 
   revalidatePath(`/admin/seasons/${seasonId}`);
 }
+
+export type AdminActionState = { error?: string } | undefined;
+
+export async function updateSelfRank(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  await requireAdmin();
+
+  const profileId = String(formData.get("profileId") ?? "");
+  const seasonId = String(formData.get("seasonId") ?? "");
+  const raw = String(formData.get("selfRank") ?? "");
+  const selfRank = raw ? Number(raw) : null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ self_rank: selfRank })
+    .eq("id", profileId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/seasons/${seasonId}`);
+  return undefined;
+}
+
+export async function makeCaptain(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  await requireAdmin();
+
+  const registrationId = String(formData.get("registrationId") ?? "");
+  const seasonId = String(formData.get("seasonId") ?? "");
+  const teamName = String(formData.get("teamName") ?? "");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("make_captain", {
+    p_registration_id: registrationId,
+    p_team_name: teamName || null,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/seasons/${seasonId}`);
+  return undefined;
+}
+
+export async function startDraft(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  await requireAdmin();
+
+  const seasonId = String(formData.get("seasonId") ?? "");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("start_draft", { p_season_id: seasonId });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/seasons/${seasonId}/draft`);
+  revalidatePath("/draft");
+  return undefined;
+}
+
+export async function recordDraftPick(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  await requireAdmin();
+
+  const seasonId = String(formData.get("seasonId") ?? "");
+  const registrationId = String(formData.get("registrationId") ?? "");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("record_draft_pick", {
+    p_season_id: seasonId,
+    p_registration_id: registrationId,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/seasons/${seasonId}/draft`);
+  revalidatePath("/draft");
+  return undefined;
+}
+
+export async function undoLastDraftPick(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  await requireAdmin();
+
+  const seasonId = String(formData.get("seasonId") ?? "");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("undo_last_draft_pick", { p_season_id: seasonId });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/seasons/${seasonId}/draft`);
+  revalidatePath("/draft");
+  return undefined;
+}

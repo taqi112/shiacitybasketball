@@ -14,3 +14,14 @@ export function datetimeLocalToIso(value: string): string {
   if (!value) return "";
   return new Date(value).toISOString();
 }
+
+// Postgres `time` columns come back as "HH:MM:SS" with no timezone at all
+// (unlike the timestamptz fields above) -- this is just a display format,
+// not a timezone conversion.
+export function formatTime(value: string): string {
+  const [hoursStr, minutesStr] = value.split(":");
+  const hours = Number(hoursStr);
+  const period = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${hour12}:${minutesStr} ${period}`;
+}

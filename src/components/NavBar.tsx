@@ -26,15 +26,17 @@ export async function NavBar() {
         {profile ? (
           <>
             <Link href="/profile">Profile</Link>
+            <Link href="/schedule">Schedule</Link>
+            <Link href="/draft">Draft</Link>
             {profile.is_admin && <Link href="/admin/seasons">Admin</Link>}
             <form action={logout}>
-              <button type="submit">Log out</button>
+              <button type="submit">Log Out</button>
             </form>
           </>
         ) : (
           <>
-            <Link href="/login">Log in</Link>
-            <Link href="/signup">Sign up</Link>
+            <Link href="/login">Log In</Link>
+            <Link href="/signup">Sign Up</Link>
           </>
         )}
       </div>

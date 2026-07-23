@@ -1,0 +1,87 @@
+import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { CreateGameForm } from "./CreateGameForm";
+import { deleteGame } from "./actions";
+import { formatTime } from "@/lib/datetime";
+import type { Season, Game } from "@/lib/types";
+
+export default async function AdminSchedulePage({
+  params,
+}: PageProps<"/admin/seasons/[id]/schedule">) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: season } = await supabase
+    .from("seasons")
+    .select("*")
+    .eq("id", id)
+    .single<Season>();
+
+  if (!season) notFound();
+
+  const { data: games } = await supabase
+    .from("games")
+    .select("*")
+    .eq("season_id", id)
+    .order("date", { ascending: true })
+    .overrideTypes<Game[], { merge: false }>();
+
+  return (
+    <div className="flex flex-col gap-8">
+      <h1 className="text-xl font-semibold">{season.name} — Schedule</h1>
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="px-4 py-2">Date</th>
+              <th className="px-4 py-2">Time</th>
+              <th className="px-4 py-2">Venue</th>
+              <th className="px-4 py-2">Type</th>
+              <th className="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {games?.map((game) => (
+              <tr key={game.id} className="border-b border-border last:border-0">
+                <td className="px-4 py-2">
+                  {new Date(`${game.date}T00:00:00`).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </td>
+                <td className="px-4 py-2">
+                  {formatTime(game.start_time)}–{formatTime(game.end_time)}
+                </td>
+                <td className="px-4 py-2">{game.venue}</td>
+                <td className="px-4 py-2">
+                  {game.game_type === "playoff" ? "Playoff" : "Regular Season"}
+                </td>
+                <td className="px-4 py-2">
+                  <form action={deleteGame}>
+                    <input type="hidden" name="gameId" value={game.id} />
+                    <input type="hidden" name="seasonId" value={id} />
+                    <button
+                      type="submit"
+                      className="rounded-md border border-border px-3 py-1 text-xs text-muted-foreground"
+                    >
+                      Remove
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+            {!games?.length && (
+              <tr>
+                <td className="px-4 py-2 text-muted-foreground" colSpan={5}>
+                  No games scheduled yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <CreateGameForm seasonId={id} />
+    </div>
+  );
+}

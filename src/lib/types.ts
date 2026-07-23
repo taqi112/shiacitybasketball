@@ -6,7 +6,7 @@ export interface Profile {
   full_name: string;
   email: string | null;
   phone: string | null;
-  position: string | null;
+  position: string[] | null;
   height: string | null;
   photo_url: string | null;
   self_rank: number | null;
@@ -39,4 +39,47 @@ export interface SeasonRegistration {
   payment_confirmed: boolean;
   payment_verified: boolean;
   registered_at: string;
+}
+
+export interface Team {
+  id: string;
+  season_id: string;
+  name: string;
+  captain_id: string | null;
+  draft_position: number | null;
+  created_at: string;
+}
+
+export interface Draft {
+  id: string;
+  season_id: string;
+  status: "not_started" | "in_progress" | "complete";
+  current_pick_number: number | null;
+  current_team_id: string | null;
+  total_picks: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface DraftPick {
+  id: string;
+  season_id: string;
+  pick_number: number;
+  round: number;
+  team_id: string;
+  registration_id: string;
+  player_name: string;
+  picked_at: string;
+}
+
+export interface Game {
+  id: string;
+  season_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  venue: string;
+  game_type: "regular_season" | "playoff";
+  created_at: string;
 }

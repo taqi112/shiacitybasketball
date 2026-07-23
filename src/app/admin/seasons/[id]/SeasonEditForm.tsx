@@ -31,7 +31,7 @@ export function SeasonEditForm({ season }: { season: Season }) {
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="registrationOpensAtLocal" className="text-sm font-medium">
-          Registration opens
+          Registration Opens
         </label>
         <input
           id="registrationOpensAtLocal"
@@ -44,7 +44,7 @@ export function SeasonEditForm({ season }: { season: Season }) {
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="registrationClosesAtLocal" className="text-sm font-medium">
-          Registration closes (optional)
+          Registration Closes (optional)
         </label>
         <input
           id="registrationClosesAtLocal"
@@ -56,7 +56,7 @@ export function SeasonEditForm({ season }: { season: Season }) {
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="maxPlayers" className="text-sm font-medium">
-          Player cap (optional)
+          Player Cap (optional)
         </label>
         <input
           id="maxPlayers"

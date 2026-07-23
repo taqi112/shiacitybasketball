@@ -49,3 +49,34 @@ export const getNextSeason = cache(async () => {
 
   return data;
 });
+
+// The most recently created season -- used by pages (schedule, standings,
+// etc.) that show "the current season" without needing a season id in the
+// URL, since this league only ever runs one season at a time.
+export const getCurrentSeason = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("seasons")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data;
+});
+
+// The most recently started/created draft (with its season nested), so
+// /draft and other draft-related views don't need a season id in the URL
+// for the common case of "there's one active season". Returns null if no
+// draft has ever been started.
+export const getDraftSeason = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("drafts")
+    .select("*, seasons(*)")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data;
+});

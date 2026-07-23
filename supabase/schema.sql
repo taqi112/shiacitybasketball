@@ -335,3 +335,407 @@ create policy "Users can update their own avatar"
 create policy "Users can delete their own avatar"
   on storage.objects for delete
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ===================== Phase 2: captains & draft =====================
+
+alter table public.teams add column draft_position int;
+
+create unique index teams_season_draft_position_key
+  on public.teams (season_id, draft_position)
+  where draft_position is not null;
+
+create policy "Admins can insert teams"
+  on public.teams for insert
+  with check (public.is_admin());
+
+create policy "Admins can update teams"
+  on public.teams for update
+  using (public.is_admin());
+
+-- One row per season. No write policies at all -- every write goes through
+-- the admin-gated functions below, never a raw client .update().
+create table public.drafts (
+  id uuid primary key default gen_random_uuid(),
+  season_id uuid not null references public.seasons(id) on delete cascade unique,
+  status text not null default 'not_started'
+    check (status in ('not_started', 'in_progress', 'complete')),
+  current_pick_number int,
+  current_team_id uuid references public.teams(id),
+  total_picks int,
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table public.drafts enable row level security;
+
+create policy "Drafts are viewable by everyone"
+  on public.drafts for select
+  using (true);
+
+-- Audit log of every pick, in order. player_name is denormalized (snapshot
+-- at pick time) specifically so the public results page never needs to join
+-- to profiles -- which non-admins can't read for other players -- to render
+-- "Team X selected Player Y". Team name is NOT denormalized since `teams`
+-- already has a public select policy.
+create table public.draft_picks (
+  id uuid primary key default gen_random_uuid(),
+  season_id uuid not null references public.seasons(id) on delete cascade,
+  pick_number int not null,
+  round int not null,
+  team_id uuid not null references public.teams(id),
+  registration_id uuid not null references public.season_registrations(id),
+  player_name text not null,
+  picked_at timestamptz not null default now(),
+  unique (season_id, pick_number),
+  unique (season_id, registration_id)
+);
+
+alter table public.draft_picks enable row level security;
+
+create policy "Draft picks are viewable by everyone"
+  on public.draft_picks for select
+  using (true);
+
+-- One click, atomic: creates the team and auto-rosters the captain onto it,
+-- so there's no window where one exists without the other.
+create or replace function public.make_captain(
+  p_registration_id uuid,
+  p_team_name text default null
+)
+returns uuid
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_registration record;
+  v_team_id uuid;
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can designate captains.';
+  end if;
+
+  select sr.*, p.full_name into v_registration
+  from public.season_registrations sr
+  join public.profiles p on p.id = sr.profile_id
+  where sr.id = p_registration_id
+  for update of sr;
+
+  if v_registration is null then
+    raise exception 'Registration not found.';
+  end if;
+  if v_registration.is_captain then
+    raise exception '% is already a captain.', v_registration.full_name;
+  end if;
+
+  insert into public.teams (season_id, name, captain_id)
+  values (
+    v_registration.season_id,
+    coalesce(nullif(trim(p_team_name), ''), v_registration.full_name || '''s Team'),
+    v_registration.profile_id
+  )
+  returning id into v_team_id;
+
+  update public.season_registrations
+  set is_captain = true, team_id = v_team_id
+  where id = p_registration_id;
+
+  return v_team_id;
+end;
+$$;
+
+-- Randomizes round-1 order and opens pick #1. Requires exactly 10 teams
+-- (the snake formula is written for exactly 10 slots); only warns (doesn't
+-- block) if the eligible pool isn't a clean multiple of 10, so a slightly
+-- off registration count doesn't block the whole event.
+create or replace function public.start_draft(p_season_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_team_count int;
+  v_pool_count int;
+  v_first_team uuid;
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can start the draft.';
+  end if;
+
+  if exists (
+    select 1 from public.drafts
+    where season_id = p_season_id and status <> 'not_started'
+  ) then
+    raise exception 'Draft has already been started for this season.';
+  end if;
+
+  select count(*) into v_team_count from public.teams where season_id = p_season_id;
+  if v_team_count <> 10 then
+    raise exception 'Expected exactly 10 teams (captains) before starting, found %.', v_team_count;
+  end if;
+
+  select count(*) into v_pool_count
+  from public.season_registrations
+  where season_id = p_season_id
+    and is_captain = false
+    and payment_verified = true
+    and team_id is null;
+
+  if v_pool_count = 0 then
+    raise exception 'No payment-verified, undrafted players found for this season.';
+  end if;
+  if v_pool_count % 10 <> 0 then
+    raise warning
+      'Pool of % players does not divide evenly across 10 teams -- some teams will end up with fewer picks.',
+      v_pool_count;
+  end if;
+
+  with shuffled as (
+    select id, row_number() over (order by random()) - 1 as pos
+    from public.teams
+    where season_id = p_season_id
+  )
+  update public.teams t
+  set draft_position = shuffled.pos
+  from shuffled
+  where t.id = shuffled.id;
+
+  select id into v_first_team
+  from public.teams
+  where season_id = p_season_id and draft_position = 0;
+
+  insert into public.drafts (season_id, status, current_pick_number, current_team_id, total_picks, started_at)
+  values (p_season_id, 'in_progress', 1, v_first_team, v_pool_count, now())
+  on conflict (season_id) do update
+  set status = 'in_progress',
+      current_pick_number = 1,
+      current_team_id = v_first_team,
+      total_picks = v_pool_count,
+      started_at = now(),
+      completed_at = null;
+end;
+$$;
+
+-- The only place a pick is ever recorded. Admin-gated (is_admin() check),
+-- and since the caller IS the admin, the existing protect_registration_admin_fields
+-- trigger's own is_admin() check already permits the team_id write below --
+-- no special bypass needed (that trigger only blocks non-admin callers).
+create or replace function public.record_draft_pick(p_season_id uuid, p_registration_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_draft record;
+  v_target record;
+  v_next_pick_number int;
+  v_round int;
+  v_index_in_round int;
+  v_position int;
+  v_next_team_id uuid;
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can record draft picks.';
+  end if;
+
+  select * into v_draft from public.drafts where season_id = p_season_id for update;
+  if v_draft is null or v_draft.status <> 'in_progress' then
+    raise exception 'Draft is not currently in progress.';
+  end if;
+
+  select sr.*, p.full_name into v_target
+  from public.season_registrations sr
+  join public.profiles p on p.id = sr.profile_id
+  where sr.id = p_registration_id and sr.season_id = p_season_id
+  for update of sr;
+
+  if v_target is null then
+    raise exception 'Player registration not found for this season.';
+  end if;
+  if v_target.is_captain then
+    raise exception 'Captains cannot be drafted.';
+  end if;
+  if not v_target.payment_verified then
+    raise exception 'That player is not payment-verified.';
+  end if;
+  if v_target.team_id is not null then
+    raise exception 'That player has already been drafted.';
+  end if;
+
+  insert into public.draft_picks (season_id, pick_number, round, team_id, registration_id, player_name)
+  values (
+    p_season_id, v_draft.current_pick_number,
+    ((v_draft.current_pick_number - 1) / 10) + 1,
+    v_draft.current_team_id, p_registration_id, v_target.full_name
+  );
+
+  update public.season_registrations
+  set team_id = v_draft.current_team_id
+  where id = p_registration_id;
+
+  v_next_pick_number := v_draft.current_pick_number + 1;
+
+  if v_next_pick_number > v_draft.total_picks then
+    update public.drafts
+    set status = 'complete', current_pick_number = null, current_team_id = null, completed_at = now()
+    where season_id = p_season_id;
+    return;
+  end if;
+
+  v_round := ((v_next_pick_number - 1) / 10) + 1;
+  v_index_in_round := (v_next_pick_number - 1) % 10;
+  v_position := case when v_round % 2 = 1 then v_index_in_round else 9 - v_index_in_round end;
+
+  select id into v_next_team_id
+  from public.teams
+  where season_id = p_season_id and draft_position = v_position;
+
+  update public.drafts
+  set current_pick_number = v_next_pick_number, current_team_id = v_next_team_id
+  where season_id = p_season_id;
+end;
+$$;
+
+-- Safety valve for a misclick during fast manual entry -- rewinds the draft
+-- by exactly one pick (including re-opening a 'complete' draft if the last
+-- pick was the final one).
+create or replace function public.undo_last_draft_pick(p_season_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_last record;
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can undo picks.';
+  end if;
+
+  select * into v_last from public.draft_picks
+  where season_id = p_season_id
+  order by pick_number desc
+  limit 1
+  for update;
+
+  if v_last is null then
+    raise exception 'No picks to undo.';
+  end if;
+
+  update public.season_registrations set team_id = null where id = v_last.registration_id;
+  delete from public.draft_picks where id = v_last.id;
+
+  update public.drafts
+  set status = 'in_progress',
+      current_pick_number = v_last.pick_number,
+      current_team_id = v_last.team_id,
+      completed_at = null
+  where season_id = p_season_id;
+end;
+$$;
+
+alter publication supabase_realtime add table public.drafts;
+alter publication supabase_realtime add table public.draft_picks;
+
+-- Some players can play more than one position (e.g. PG/SG, PF/C) --
+-- widened from a single text value to an array of up to 2. The USING clause
+-- wraps any existing single value in a one-element array so no data is lost.
+alter table public.profiles
+  alter column position type text[]
+  using case when position is null or position = '' then null else array[position] end;
+
+alter table public.profiles
+  add constraint profiles_position_max_two check (position is null or array_length(position, 1) <= 2);
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (
+    id, full_name, email, phone, position, height,
+    self_rank, jersey_size, played_before, age
+  )
+  values (
+    new.id,
+    new.raw_user_meta_data->>'full_name',
+    new.email,
+    new.raw_user_meta_data->>'phone',
+    case
+      when new.raw_user_meta_data->'position' is not null
+        then array(select jsonb_array_elements_text(new.raw_user_meta_data->'position'))
+      else null
+    end,
+    new.raw_user_meta_data->>'height',
+    (new.raw_user_meta_data->>'self_rank')::int,
+    new.raw_user_meta_data->>'jersey_size',
+    (new.raw_user_meta_data->>'played_before')::boolean,
+    (new.raw_user_meta_data->>'age')::int
+  );
+
+  if (new.raw_user_meta_data->>'season_id') is not null then
+    insert into public.season_registrations (
+      season_id, profile_id, availability_notes, captain_preference,
+      waiver_consent, payment_confirmed
+    )
+    values (
+      (new.raw_user_meta_data->>'season_id')::uuid,
+      new.id,
+      new.raw_user_meta_data->>'availability_notes',
+      case
+        when new.raw_user_meta_data->'captain_preference' is not null
+          then array(select jsonb_array_elements_text(new.raw_user_meta_data->'captain_preference'))
+        else null
+      end,
+      coalesce((new.raw_user_meta_data->>'waiver_consent')::boolean, false),
+      coalesce((new.raw_user_meta_data->>'payment_confirmed')::boolean, false)
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+-- No admin UPDATE policy on profiles existed until now (only self-update +
+-- admin select-all). Needed so admin can correct a player's self-reported
+-- self_rank. Row-level like every other admin policy here -- doesn't grant
+-- anything beyond what "Admins can update registrations"/"...teams"/"...seasons"
+-- already establish as the pattern for this app.
+create policy "Admins can update profiles"
+  on public.profiles for update
+  using (public.is_admin());
+
+-- Games: a scheduled date/time/venue for a season. Deliberately no
+-- home/away team columns yet -- matchups aren't decided until the draft
+-- produces real teams, and building that assignment logic now would be
+-- speculative. Add those columns (and a court label) via ALTER TABLE once
+-- matchups are actually being scheduled.
+create table public.games (
+  id uuid primary key default gen_random_uuid(),
+  season_id uuid not null references public.seasons(id) on delete cascade,
+  date date not null,
+  start_time time not null,
+  end_time time not null,
+  venue text not null,
+  game_type text not null default 'regular_season'
+    check (game_type in ('regular_season', 'playoff')),
+  created_at timestamptz not null default now()
+);
+
+alter table public.games enable row level security;
+
+create policy "Games are viewable by everyone"
+  on public.games for select
+  using (true);
+
+create policy "Admins can insert games"
+  on public.games for insert
+  with check (public.is_admin());
+
+create policy "Admins can update games"
+  on public.games for update
+  using (public.is_admin());
+
+create policy "Admins can delete games"
+  on public.games for delete
+  using (public.is_admin());

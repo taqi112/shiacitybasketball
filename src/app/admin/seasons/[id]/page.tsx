@@ -1,10 +1,13 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SeasonEditForm } from "./SeasonEditForm";
+import { MakeCaptainButton } from "./MakeCaptainButton";
+import { SelfRankSelect } from "./SelfRankSelect";
 import { toggleRegistrationPaymentVerified } from "../actions";
-import type { Profile, Season, SeasonRegistration } from "@/lib/types";
+import type { Profile, Season, SeasonRegistration, Team } from "@/lib/types";
 
-type RegistrantRow = SeasonRegistration & { profiles: Profile | null };
+type RegistrantRow = SeasonRegistration & { profiles: Profile | null; teams: Team | null };
 
 export default async function AdminSeasonDetailPage({
   params,
@@ -22,7 +25,7 @@ export default async function AdminSeasonDetailPage({
 
   const { data: registrants } = await supabase
     .from("season_registrations")
-    .select("*, profiles(*)")
+    .select("*, profiles(*), teams(*)")
     .eq("season_id", id)
     .order("registered_at", { ascending: true })
     .overrideTypes<RegistrantRow[], { merge: false }>();
@@ -30,7 +33,23 @@ export default async function AdminSeasonDetailPage({
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="mb-4 text-xl font-semibold">{season.name}</h1>
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-xl font-semibold">{season.name}</h1>
+          <div className="flex gap-2">
+            <Link
+              href={`/admin/seasons/${id}/schedule`}
+              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium"
+            >
+              Schedule →
+            </Link>
+            <Link
+              href={`/admin/seasons/${id}/draft`}
+              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium"
+            >
+              Draft Room →
+            </Link>
+          </div>
+        </div>
         <SeasonEditForm season={season} />
       </div>
       <div>
@@ -45,10 +64,11 @@ export default async function AdminSeasonDetailPage({
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Contact</th>
                 <th className="px-4 py-2">Jersey #</th>
-                <th className="px-4 py-2">Captain</th>
+                <th className="px-4 py-2">Self Rank</th>
                 <th className="px-4 py-2">Team</th>
-                <th className="px-4 py-2">Payment claimed</th>
-                <th className="px-4 py-2">Payment verified</th>
+                <th className="px-4 py-2">Captain</th>
+                <th className="px-4 py-2">Payment Claimed</th>
+                <th className="px-4 py-2">Payment Verified</th>
               </tr>
             </thead>
             <tbody>
@@ -60,8 +80,23 @@ export default async function AdminSeasonDetailPage({
                     {registrant.profiles?.phone && ` · ${registrant.profiles.phone}`}
                   </td>
                   <td className="px-4 py-2">{registrant.jersey_number ?? "—"}</td>
-                  <td className="px-4 py-2">{registrant.is_captain ? "Yes" : "—"}</td>
-                  <td className="px-4 py-2">{registrant.team_id ? "Assigned" : "—"}</td>
+                  <td className="px-4 py-2">
+                    {registrant.profiles && (
+                      <SelfRankSelect
+                        profileId={registrant.profiles.id}
+                        seasonId={id}
+                        selfRank={registrant.profiles.self_rank}
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2">{registrant.teams?.name ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    {registrant.is_captain ? (
+                      "Yes"
+                    ) : (
+                      <MakeCaptainButton registrationId={registrant.id} seasonId={id} />
+                    )}
+                  </td>
                   <td className="px-4 py-2">{registrant.payment_confirmed ? "Yes" : "No"}</td>
                   <td className="px-4 py-2">
                     <form action={toggleRegistrationPaymentVerified}>
@@ -80,7 +115,7 @@ export default async function AdminSeasonDetailPage({
                             : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground"
                         }
                       >
-                        {registrant.payment_verified ? "Verified" : "Mark verified"}
+                        {registrant.payment_verified ? "Verified" : "Mark Verified"}
                       </button>
                     </form>
                   </td>
@@ -88,7 +123,7 @@ export default async function AdminSeasonDetailPage({
               ))}
               {!registrants?.length && (
                 <tr>
-                  <td className="px-4 py-2 text-muted-foreground" colSpan={7}>
+                  <td className="px-4 py-2 text-muted-foreground" colSpan={8}>
                     No registrants yet.
                   </td>
                 </tr>
