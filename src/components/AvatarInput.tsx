@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
+import { MAX_AVATAR_BYTES } from "@/lib/avatar";
 
 // Vercel's serverless functions hard-cap request bodies at ~4.5MB regardless
 // of Next.js's own bodySizeLimit config -- an over-that request gets dropped
@@ -10,29 +11,29 @@ import { useId, useRef, useState } from "react";
 const MAX_DIMENSION = 1080;
 const JPEG_QUALITY = 0.8;
 
+// Throws rather than falling back to the original file -- gallery photos in
+// particular can be large enough that a failed decode/compression (low
+// memory, an unsupported format) would otherwise silently resubmit the same
+// oversized file that caused the failure in the first place.
 async function compressImage(file: File): Promise<File> {
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
-    const width = Math.round(bitmap.width * scale);
-    const height = Math.round(bitmap.height * scale);
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
 
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return file;
-    ctx.drawImage(bitmap, 0, 0, width, height);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas not supported.");
+  ctx.drawImage(bitmap, 0, 0, width, height);
 
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
-    );
-    if (!blob) return file;
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
+  );
+  if (!blob || blob.size > MAX_AVATAR_BYTES) throw new Error("Could not encode image.");
 
-    return new File([blob], "avatar.jpg", { type: "image/jpeg" });
-  } catch {
-    return file;
-  }
+  return new File([blob], "avatar.jpg", { type: "image/jpeg" });
 }
 
 export function AvatarInput({
@@ -46,6 +47,7 @@ export function AvatarInput({
 }) {
   const [preview, setPreview] = useState<string | null>(currentUrl ?? null);
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
 
@@ -53,17 +55,28 @@ export function AvatarInput({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setError(null);
     setPreview(URL.createObjectURL(file));
     setProcessing(true);
 
-    const compressed = await compressImage(file);
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(compressed);
-    if (inputRef.current) {
-      inputRef.current.files = dataTransfer.files;
+    try {
+      const compressed = await compressImage(file);
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(compressed);
+      if (inputRef.current) {
+        inputRef.current.files = dataTransfer.files;
+      }
+    } catch {
+      setError(
+        "Couldn't process that photo. Try a different image, or take a new photo with your camera instead.",
+      );
+      setPreview(currentUrl ?? null);
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+    } finally {
+      setProcessing(false);
     }
-
-    setProcessing(false);
   }
 
   return (
@@ -93,6 +106,7 @@ export function AvatarInput({
           {processing ? "Processing Image..." : preview ? "File Uploaded" : "No File Chosen"}
         </span>
       </div>
+      {error && <p className="text-sm text-red-500">{error}</p>}
       <input
         ref={inputRef}
         id={inputId}

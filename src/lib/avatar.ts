@@ -1,6 +1,6 @@
 export const AVATAR_BUCKET = "avatars";
 
-const MAX_AVATAR_BYTES = 4 * 1024 * 1024;
+export const MAX_AVATAR_BYTES = 4 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 // No extension -- re-uploading always overwrites the same object instead of
