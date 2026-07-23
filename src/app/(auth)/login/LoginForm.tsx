@@ -37,7 +37,7 @@ export function LoginForm({ next }: { next: string }) {
           className={inputClass}
         />
       </div>
-      <SubmitButton>Log in</SubmitButton>
+      <SubmitButton>Log In</SubmitButton>
     </form>
   );
 }

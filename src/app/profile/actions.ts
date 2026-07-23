@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { requireUser } from "@/lib/auth";
-import { AVATAR_BUCKET, avatarPath, validateAvatarFile } from "@/lib/avatar";
+import { AVATAR_BUCKET, avatarPath, validateAvatarFile, withCacheBust } from "@/lib/avatar";
 
 export type ProfileState = { error?: string; success?: boolean } | undefined;
 
@@ -18,6 +18,11 @@ export async function updateProfile(
   const playedBefore = String(formData.get("playedBefore") ?? "");
   const registrationId = String(formData.get("registrationId") ?? "");
   const jerseyNumber = String(formData.get("jerseyNumber") ?? "");
+  const positions = formData.getAll("position").map(String);
+
+  if (positions.length === 0) {
+    return { error: "Please select at least one position." };
+  }
 
   const supabase = await createClient();
 
@@ -38,7 +43,7 @@ export async function updateProfile(
     const {
       data: { publicUrl },
     } = storage.storage.from(AVATAR_BUCKET).getPublicUrl(path);
-    photoUrl = publicUrl;
+    photoUrl = withCacheBust(publicUrl);
   }
 
   const { error } = await supabase
@@ -46,7 +51,7 @@ export async function updateProfile(
     .update({
       full_name: String(formData.get("fullName") ?? ""),
       phone: String(formData.get("phone") ?? ""),
-      position: String(formData.get("position") ?? ""),
+      position: positions,
       height: String(formData.get("height") ?? ""),
       self_rank: selfRank ? Number(selfRank) : null,
       jersey_size: String(formData.get("jerseySize") ?? "") || null,

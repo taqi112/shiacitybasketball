@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { ProfileForm } from "./ProfileForm";
+import { ProfileView } from "./ProfileView";
+import { Toast } from "@/components/Toast";
 import type { Profile, Season, SeasonRegistration } from "@/lib/types";
 
 type RegistrationWithSeason = SeasonRegistration & { seasons: Season | null };
@@ -8,6 +9,7 @@ type RegistrationWithSeason = SeasonRegistration & { seasons: Season | null };
 export default async function ProfilePage({ searchParams }: PageProps<"/profile">) {
   const params = await searchParams;
   const photoFailed = params.photo === "failed";
+  const welcome = params.welcome === "1";
 
   const user = await requireUser();
   const supabase = await createClient();
@@ -30,33 +32,15 @@ export default async function ProfilePage({ searchParams }: PageProps<"/profile"
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-8 px-4 py-12">
+      {welcome && <Toast message="You're signed up! Welcome to Shia City Basketball." />}
       {photoFailed && (
         <p className="rounded-md border border-amber-900/40 bg-amber-950/50 px-3 py-2 text-sm text-amber-300">
           Your account was created, but we couldn&apos;t upload your profile picture. Try
           uploading it again below.
         </p>
       )}
-      <div>
-        <h1 className="text-xl font-semibold">Your profile</h1>
-        {registration?.seasons && (
-          <div className="mt-2 text-sm text-muted-foreground">
-            <p>Registered for {registration.seasons.name}</p>
-            <p>
-              Team: {registration.team_id ? "Assigned" : "Not assigned yet"}
-              {registration.is_captain && " (Captain)"}
-            </p>
-            <p>
-              Jersey number:{" "}
-              {registration.jersey_number ?? "Not assigned yet"}
-            </p>
-          </div>
-        )}
-      </div>
-      <ProfileForm
-        profile={profile}
-        registrationId={registration?.id ?? null}
-        jerseyNumber={registration?.jersey_number ?? null}
-      />
+      <h1 className="text-xl font-semibold">Your Profile</h1>
+      <ProfileView profile={profile} registration={registration} />
     </div>
   );
 }

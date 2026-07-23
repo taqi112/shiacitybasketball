@@ -5,9 +5,11 @@ import { useId, useState } from "react";
 export function AvatarInput({
   name,
   currentUrl,
+  required,
 }: {
   name: string;
   currentUrl?: string | null;
+  required?: boolean;
 }) {
   const [preview, setPreview] = useState<string | null>(currentUrl ?? null);
   const inputId = useId();
@@ -21,8 +23,11 @@ export function AvatarInput({
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={inputId} className="text-sm font-medium">
-        Profile picture
+        Profile Picture
       </label>
+      <p className="text-xs text-muted-foreground">
+        Please upload a clear photo of your face.
+      </p>
       {preview && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -36,10 +41,10 @@ export function AvatarInput({
           htmlFor={inputId}
           className="cursor-pointer rounded-md border border-border bg-surface px-3 py-1.5 text-sm font-medium text-foreground"
         >
-          Choose file
+          Choose File
         </label>
         <span className="text-sm text-muted-foreground">
-          {preview ? "File uploaded" : "No file chosen"}
+          {preview ? "File Uploaded" : "No File Chosen"}
         </span>
       </div>
       <input
@@ -48,6 +53,7 @@ export function AvatarInput({
         type="file"
         accept="image/jpeg,image/png,image/webp"
         onChange={handleChange}
+        required={required && !currentUrl}
         className="sr-only"
       />
     </div>

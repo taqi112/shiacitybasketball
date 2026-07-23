@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { updateProfile } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
 import { AvatarInput } from "@/components/AvatarInput";
+import { PositionPicker } from "@/components/PositionPicker";
 import type { Profile } from "@/lib/types";
 import { inputClass } from "@/lib/ui";
 
@@ -12,13 +13,20 @@ export function ProfileForm({
   profile,
   registrationId,
   jerseyNumber,
+  onSuccess,
 }: {
   profile: Profile;
   registrationId: string | null;
   jerseyNumber: number | null;
+  onSuccess?: () => void;
 }) {
   const [state, formAction] = useActionState(updateProfile, undefined);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (state?.success) onSuccess?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   // Submitting via onSubmit + startTransition instead of <form action={formAction}>
   // deliberately -- a form using the action prop directly gets its fields
@@ -35,7 +43,7 @@ export function ProfileForm({
     });
   }
 
-  const [position, setPosition] = useState(profile.position ?? "");
+  const [positions, setPositions] = useState<string[]>(profile.position ?? []);
   const [selfRank, setSelfRank] = useState(
     profile.self_rank != null ? String(profile.self_rank) : "",
   );
@@ -47,15 +55,10 @@ export function ProfileForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <FormError message={state?.error} />
-      {state?.success && (
-        <p className="rounded-md border border-emerald-900/40 bg-emerald-950/50 px-3 py-2 text-sm text-emerald-300">
-          Profile updated.
-        </p>
-      )}
       <AvatarInput name="photo" currentUrl={profile.photo_url} />
       <div className="flex flex-col gap-1">
         <label htmlFor="fullName" className="text-sm font-medium">
-          Full name
+          Full Name
         </label>
         <input
           id="fullName"
@@ -78,25 +81,8 @@ export function ProfileForm({
         />
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor="position" className="text-sm font-medium">
-          Position
-        </label>
-        <select
-          id="position"
-          name="position"
-          value={position}
-          onChange={(e) => setPosition(e.target.value)}
-          className={inputClass}
-        >
-          <option value="" disabled>
-            Select a position
-          </option>
-          <option value="Point Guard">Point Guard</option>
-          <option value="Shooting Guard">Shooting Guard</option>
-          <option value="Small Forward">Small Forward</option>
-          <option value="Power Forward">Power Forward</option>
-          <option value="Center">Center</option>
-        </select>
+        <label className="text-sm font-medium">Position (up to 2)</label>
+        <PositionPicker name="position" selected={positions} onChange={setPositions} />
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="height" className="text-sm font-medium">
@@ -111,7 +97,7 @@ export function ProfileForm({
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="selfRank" className="text-sm font-medium">
-          Self ranking
+          Self Ranking
         </label>
         <select
           id="selfRank"
@@ -121,7 +107,7 @@ export function ProfileForm({
           className={inputClass}
         >
           <option value="" disabled>
-            Select a rating
+            Select a Rating
           </option>
           <option value="1">1 - Very beginner</option>
           <option value="2">2</option>
@@ -132,7 +118,7 @@ export function ProfileForm({
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="jerseySize" className="text-sm font-medium">
-          Jersey size
+          Jersey Size
         </label>
         <select
           id="jerseySize"
@@ -142,7 +128,7 @@ export function ProfileForm({
           className={inputClass}
         >
           <option value="" disabled>
-            Select a size
+            Select a Size
           </option>
           <option value="XS">XS</option>
           <option value="S">S</option>
@@ -156,7 +142,7 @@ export function ProfileForm({
         <div className="flex flex-col gap-1">
           <input type="hidden" name="registrationId" value={registrationId} />
           <label htmlFor="jerseyNumber" className="text-sm font-medium">
-            Jersey number
+            Jersey Number
           </label>
           <input
             id="jerseyNumber"
@@ -197,7 +183,7 @@ export function ProfileForm({
           </label>
         </div>
       </fieldset>
-      <SubmitButton pending={isPending}>Save changes</SubmitButton>
+      <SubmitButton pending={isPending}>Save Changes</SubmitButton>
     </form>
   );
 }

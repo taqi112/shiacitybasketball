@@ -9,12 +9,12 @@ export default async function LoginPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">Log in</h1>
+      <h1 className="text-xl font-semibold">Log In</h1>
       <LoginForm next={next} />
       <p className="text-sm">
         Need an account?{" "}
         <Link href="/signup" className="font-medium underline">
-          Sign up
+          Sign Up
         </Link>
       </p>
     </div>

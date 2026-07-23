@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { getOpenSeason } from "@/lib/season";
-import { AVATAR_BUCKET, avatarPath, validateAvatarFile } from "@/lib/avatar";
+import { AVATAR_BUCKET, avatarPath, validateAvatarFile, withCacheBust } from "@/lib/avatar";
 
 export type SignupState = { error?: string } | undefined;
 
@@ -16,7 +16,7 @@ export async function signup(
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const phone = String(formData.get("phone") ?? "");
-  const position = String(formData.get("position") ?? "");
+  const positions = formData.getAll("position").map(String);
   const height = String(formData.get("height") ?? "");
   const age = String(formData.get("age") ?? "");
   const selfRank = String(formData.get("selfRank") ?? "");
@@ -26,6 +26,19 @@ export async function signup(
   const captainPreference = formData.getAll("captainPreference").map(String);
   const waiverConsent = formData.get("waiverConsent") === "true";
   const paymentConfirmed = formData.get("paymentConfirmed") === "true";
+
+  const photo = formData.get("photo");
+  if (!(photo instanceof File) || photo.size === 0) {
+    return { error: "A profile picture is required to sign up." };
+  }
+  const photoValidationError = validateAvatarFile(photo);
+  if (photoValidationError) {
+    return { error: photoValidationError };
+  }
+
+  if (positions.length === 0) {
+    return { error: "Please select at least one position." };
+  }
 
   if (!waiverConsent) {
     return { error: "You must agree to the liability waiver and media consent to sign up." };
@@ -48,7 +61,7 @@ export async function signup(
       data: {
         full_name: fullName,
         phone,
-        position,
+        position: positions,
         height,
         self_rank: selfRank || null,
         jersey_size: jerseySize || null,
@@ -78,42 +91,36 @@ export async function signup(
     return { error: "An account with that email already exists. Try logging in instead." };
   }
 
-  // Doesn't block signup if it fails -- the account already exists by this
-  // point, and blocking here would just dead-end them into "email already
-  // registered" if they tried to resubmit. Instead flag it via a query param
-  // so /profile can show a clear "try again" notice instead of failing silently.
-  const photo = formData.get("photo");
+  // Doesn't block signup if the upload itself fails -- the account already
+  // exists by this point (already validated as present/valid above), and
+  // blocking here would just dead-end them into "email already registered"
+  // if they tried to resubmit. Instead flag it via a query param so
+  // /profile can show a clear "try again" notice instead of failing silently.
   let photoFailed = false;
-  if (photo instanceof File && photo.size > 0 && data.user) {
-    const validationError = validateAvatarFile(photo);
-    if (validationError) {
-      photoFailed = true;
-      console.error("Signup photo upload skipped (validation):", validationError);
-    } else {
-      const path = avatarPath(data.user.id);
-      const storage = createServiceRoleClient();
-      const { error: uploadError } = await storage.storage
-        .from(AVATAR_BUCKET)
-        .upload(path, photo, { upsert: true, contentType: photo.type });
+  if (data.user) {
+    const path = avatarPath(data.user.id);
+    const storage = createServiceRoleClient();
+    const { error: uploadError } = await storage.storage
+      .from(AVATAR_BUCKET)
+      .upload(path, photo, { upsert: true, contentType: photo.type });
 
-      if (uploadError) {
+    if (uploadError) {
+      photoFailed = true;
+      console.error("Signup photo upload failed:", uploadError.message);
+    } else {
+      const {
+        data: { publicUrl },
+      } = storage.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+      const { error: photoUrlError } = await supabase
+        .from("profiles")
+        .update({ photo_url: withCacheBust(publicUrl) })
+        .eq("id", data.user.id);
+      if (photoUrlError) {
         photoFailed = true;
-        console.error("Signup photo upload failed:", uploadError.message);
-      } else {
-        const {
-          data: { publicUrl },
-        } = storage.storage.from(AVATAR_BUCKET).getPublicUrl(path);
-        const { error: photoUrlError } = await supabase
-          .from("profiles")
-          .update({ photo_url: publicUrl })
-          .eq("id", data.user.id);
-        if (photoUrlError) {
-          photoFailed = true;
-          console.error("Signup photo_url save failed:", photoUrlError.message);
-        }
+        console.error("Signup photo_url save failed:", photoUrlError.message);
       }
     }
   }
 
-  redirect(photoFailed ? "/profile?photo=failed" : "/profile");
+  redirect(photoFailed ? "/profile?welcome=1&photo=failed" : "/profile?welcome=1");
 }

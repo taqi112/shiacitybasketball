@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
 import { BubbleCheckbox } from "@/components/BubbleCheckbox";
 import { AvatarInput } from "@/components/AvatarInput";
+import { PositionPicker } from "@/components/PositionPicker";
 import { inputClass } from "@/lib/ui";
 
 const CAPTAINS = [
@@ -14,7 +15,7 @@ const CAPTAINS = [
   "Danesh Jafri",
   "Hasnain Zaidi",
   "Hussan Ali",
-  "Hussain Khan",
+  "Imran Ladak",
   "Mo Naqvi",
   "Syed Daniyal",
   "Taqi Hussain",
@@ -24,6 +25,7 @@ const CAPTAINS = [
 
 export function SignupForm() {
   const [state, formAction] = useActionState(signup, undefined);
+  const [positions, setPositions] = useState<string[]>([]);
   const [captainPreference, setCaptainPreference] = useState<string[]>(["No Preference"]);
   const [waiverConsent, setWaiverConsent] = useState(false);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
@@ -46,12 +48,12 @@ export function SignupForm() {
     <form action={formAction} className="flex flex-col gap-4">
       <FormError message={state?.error} />
       <p className="text-sm text-muted-foreground">
-        All fields are required except your profile picture.
+        All fields are required.
       </p>
-      <AvatarInput name="photo" />
+      <AvatarInput name="photo" required />
       <div className="flex flex-col gap-1">
         <label htmlFor="fullName" className="text-sm font-medium">
-          Full name
+          Full Name
         </label>
         <input id="fullName" name="fullName" required className={inputClass} />
       </div>
@@ -95,19 +97,8 @@ export function SignupForm() {
         />
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor="position" className="text-sm font-medium">
-          Position
-        </label>
-        <select id="position" name="position" defaultValue="" required className={inputClass}>
-          <option value="" disabled>
-            Select a position
-          </option>
-          <option value="Point Guard">Point Guard</option>
-          <option value="Shooting Guard">Shooting Guard</option>
-          <option value="Small Forward">Small Forward</option>
-          <option value="Power Forward">Power Forward</option>
-          <option value="Center">Center</option>
-        </select>
+        <label className="text-sm font-medium">Position (up to 2)</label>
+        <PositionPicker name="position" selected={positions} onChange={setPositions} />
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="height" className="text-sm font-medium">
@@ -123,11 +114,11 @@ export function SignupForm() {
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="selfRank" className="text-sm font-medium">
-          Self ranking
+          Self Ranking
         </label>
         <select id="selfRank" name="selfRank" defaultValue="" required className={inputClass}>
           <option value="" disabled>
-            Select a rating
+            Select a Rating
           </option>
           <option value="1">1 - Very beginner</option>
           <option value="2">2</option>
@@ -138,11 +129,11 @@ export function SignupForm() {
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="jerseySize" className="text-sm font-medium">
-          Jersey size
+          Jersey Size
         </label>
         <select id="jerseySize" name="jerseySize" defaultValue="" required className={inputClass}>
           <option value="" disabled>
-            Select a size
+            Select a Size
           </option>
           <option value="XS">XS</option>
           <option value="S">S</option>
@@ -248,7 +239,7 @@ export function SignupForm() {
           onChange={setPaymentConfirmed}
         />
       </div>
-      <SubmitButton>Sign up</SubmitButton>
+      <SubmitButton>Sign Up</SubmitButton>
     </form>
   );
 }
