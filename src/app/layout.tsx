@@ -21,6 +21,7 @@ const anton = Anton({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://shiacity.org"),
   title: "Shia City Basketball",
   description: "Shia City Basketball league",
 };
