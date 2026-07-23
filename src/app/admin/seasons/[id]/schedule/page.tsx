@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CreateGameForm } from "./CreateGameForm";
@@ -38,6 +39,7 @@ export default async function AdminSchedulePage({
               <th className="px-4 py-2">Venue</th>
               <th className="px-4 py-2">Type</th>
               <th className="px-4 py-2"></th>
+              <th className="px-4 py-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -58,6 +60,14 @@ export default async function AdminSchedulePage({
                   {game.game_type === "playoff" ? "Playoff" : "Regular Season"}
                 </td>
                 <td className="px-4 py-2">
+                  <Link
+                    href={`/admin/seasons/${id}/schedule/${game.id}`}
+                    className="rounded-md border border-border px-3 py-1 text-xs font-medium"
+                  >
+                    Box Score
+                  </Link>
+                </td>
+                <td className="px-4 py-2">
                   <form action={deleteGame}>
                     <input type="hidden" name="gameId" value={game.id} />
                     <input type="hidden" name="seasonId" value={id} />
@@ -73,7 +83,7 @@ export default async function AdminSchedulePage({
             ))}
             {!games?.length && (
               <tr>
-                <td className="px-4 py-2 text-muted-foreground" colSpan={5}>
+                <td className="px-4 py-2 text-muted-foreground" colSpan={6}>
                   No games scheduled yet.
                 </td>
               </tr>

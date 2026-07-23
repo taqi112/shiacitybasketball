@@ -794,3 +794,63 @@ create policy "Admins can update games"
 create policy "Admins can delete games"
   on public.games for delete
   using (public.is_admin());
+
+-- ===================== Phase 4: stats =====================
+
+-- One row per player who actually played in a given game. Absence of a row
+-- means they didn't play that game (not that they scored zero) -- this is
+-- what makes "games played" for season averages just a row count.
+create table public.game_stats (
+  id uuid primary key default gen_random_uuid(),
+  season_id uuid not null references public.seasons(id) on delete cascade,
+  game_id uuid not null references public.games(id) on delete cascade,
+  registration_id uuid not null references public.season_registrations(id) on delete cascade,
+  points int not null default 0,
+  rebounds int not null default 0,
+  blocks int not null default 0,
+  steals int not null default 0,
+  three_pm int not null default 0,
+  created_at timestamptz not null default now(),
+  unique (game_id, registration_id)
+);
+
+alter table public.game_stats enable row level security;
+
+create policy "Game stats are viewable by everyone"
+  on public.game_stats for select
+  using (true);
+
+create policy "Admins can insert game stats"
+  on public.game_stats for insert
+  with check (public.is_admin());
+
+create policy "Admins can update game stats"
+  on public.game_stats for update
+  using (public.is_admin());
+
+create policy "Admins can delete game stats"
+  on public.game_stats for delete
+  using (public.is_admin());
+
+-- Read-only reference data imported once from a past season's spreadsheet.
+-- Deliberately not linked to profiles/teams -- these seasons predate the
+-- site and most of these players never made accounts here.
+create table public.legacy_season_stats (
+  id uuid primary key default gen_random_uuid(),
+  season_label text not null,
+  team_name text not null,
+  player_name text not null,
+  games_played numeric not null,
+  points numeric not null,
+  rebounds numeric not null,
+  blocks numeric not null,
+  steals numeric not null,
+  three_pm numeric not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.legacy_season_stats enable row level security;
+
+create policy "Legacy stats are viewable by everyone"
+  on public.legacy_season_stats for select
+  using (true);

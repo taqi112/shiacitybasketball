@@ -83,3 +83,30 @@ export interface Game {
   game_type: "regular_season" | "playoff";
   created_at: string;
 }
+
+export interface GameStat {
+  id: string;
+  season_id: string;
+  game_id: string;
+  registration_id: string;
+  points: number;
+  rebounds: number;
+  blocks: number;
+  steals: number;
+  three_pm: number;
+  created_at: string;
+}
+
+export interface LegacySeasonStat {
+  id: string;
+  season_label: string;
+  team_name: string;
+  player_name: string;
+  games_played: number;
+  points: number;
+  rebounds: number;
+  blocks: number;
+  steals: number;
+  three_pm: number;
+  created_at: string;
+}
