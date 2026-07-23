@@ -7,7 +7,7 @@ export async function NavBar() {
   const profile = await getCurrentProfile();
 
   return (
-    <nav className="flex items-center justify-between border-b border-border bg-background px-6 py-4">
+    <nav className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border bg-background px-4 py-3 sm:px-6 sm:py-4">
       <Link href="/" className="flex items-center gap-2">
         <span className="inline-flex overflow-hidden rounded-md bg-white">
           <Image
@@ -18,19 +18,21 @@ export async function NavBar() {
             className="h-9 w-9 object-cover"
           />
         </span>
-        <span className="font-display text-sm tracking-wide text-foreground uppercase">
+        <span className="hidden font-display text-sm tracking-wide text-foreground uppercase sm:inline">
           Basketball
         </span>
       </Link>
-      <div className="flex items-center gap-4 text-sm">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm sm:gap-x-4">
         {profile ? (
           <>
             <Link href="/profile">Profile</Link>
             <Link href="/schedule">Schedule</Link>
             <Link href="/draft">Draft</Link>
             {profile.is_admin && <Link href="/admin/seasons">Admin</Link>}
-            <form action={logout}>
-              <button type="submit">Log Out</button>
+            <form action={logout} className="contents">
+              <button type="submit" className="cursor-pointer border-0 bg-transparent p-0">
+                Log Out
+              </button>
             </form>
           </>
         ) : (
