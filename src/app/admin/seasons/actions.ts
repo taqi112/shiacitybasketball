@@ -153,6 +153,26 @@ export async function makeCaptain(
   return undefined;
 }
 
+export async function undoMakeCaptain(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  await requireAdmin();
+
+  const registrationId = String(formData.get("registrationId") ?? "");
+  const seasonId = String(formData.get("seasonId") ?? "");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("undo_make_captain", {
+    p_registration_id: registrationId,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/seasons/${seasonId}`);
+  return undefined;
+}
+
 export async function startDraft(
   _prevState: AdminActionState,
   formData: FormData,

@@ -65,6 +65,8 @@ export default async function AdminSeasonDetailPage({
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Contact</th>
                 <th className="px-4 py-2">Jersey #</th>
+                <th className="px-4 py-2">Height</th>
+                <th className="px-4 py-2">Position</th>
                 <th className="px-4 py-2">Self Rank</th>
                 <th className="px-4 py-2">Team</th>
                 <th className="px-4 py-2">Captain</th>
@@ -95,6 +97,12 @@ export default async function AdminSeasonDetailPage({
                     {registrant.profiles?.phone && ` · ${registrant.profiles.phone}`}
                   </td>
                   <td className="px-4 py-2">{registrant.jersey_number ?? "—"}</td>
+                  <td className="px-4 py-2">{registrant.profiles?.height ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    {registrant.profiles?.position?.length
+                      ? registrant.profiles.position.join(" / ")
+                      : "—"}
+                  </td>
                   <td className="px-4 py-2">
                     {registrant.profiles && (
                       <SelfRankSelect
@@ -106,11 +114,11 @@ export default async function AdminSeasonDetailPage({
                   </td>
                   <td className="px-4 py-2">{registrant.teams?.name ?? "—"}</td>
                   <td className="px-4 py-2">
-                    {registrant.is_captain ? (
-                      "Yes"
-                    ) : (
-                      <MakeCaptainButton registrationId={registrant.id} seasonId={id} />
-                    )}
+                    <MakeCaptainButton
+                      registrationId={registrant.id}
+                      seasonId={id}
+                      isCaptain={registrant.is_captain}
+                    />
                   </td>
                   <td className="px-4 py-2">{registrant.payment_confirmed ? "Yes" : "No"}</td>
                   <td className="px-4 py-2">
@@ -138,7 +146,7 @@ export default async function AdminSeasonDetailPage({
               ))}
               {!registrants?.length && (
                 <tr>
-                  <td className="px-4 py-2 text-muted-foreground" colSpan={9}>
+                  <td className="px-4 py-2 text-muted-foreground" colSpan={11}>
                     No registrants yet.
                   </td>
                 </tr>

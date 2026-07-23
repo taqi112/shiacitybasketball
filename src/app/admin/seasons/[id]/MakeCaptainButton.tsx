@@ -1,17 +1,22 @@
 "use client";
 
 import { useActionState } from "react";
-import { makeCaptain } from "../actions";
+import { makeCaptain, undoMakeCaptain } from "../actions";
 import { FormError } from "@/components/FormError";
 
 export function MakeCaptainButton({
   registrationId,
   seasonId,
+  isCaptain,
 }: {
   registrationId: string;
   seasonId: string;
+  isCaptain: boolean;
 }) {
-  const [state, formAction] = useActionState(makeCaptain, undefined);
+  const [state, formAction] = useActionState(
+    isCaptain ? undoMakeCaptain : makeCaptain,
+    undefined,
+  );
 
   return (
     <form action={formAction} className="flex flex-col gap-1">
@@ -19,9 +24,13 @@ export function MakeCaptainButton({
       <input type="hidden" name="seasonId" value={seasonId} />
       <button
         type="submit"
-        className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground"
+        className={
+          isCaptain
+            ? "rounded-full border border-border px-3 py-1 text-xs text-red-500"
+            : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground"
+        }
       >
-        Make Captain
+        {isCaptain ? "Undo Captain" : "Make Captain"}
       </button>
       <FormError message={state?.error} />
     </form>

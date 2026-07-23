@@ -444,6 +444,61 @@ begin
 end;
 $$;
 
+-- Reverts an accidental "Make Captain" click. Only safe to do while the team
+-- is still empty and untouched by the draft -- otherwise deleting it would
+-- orphan draft_picks rows and any other registration pointing at it, or
+-- desync a draft already in progress (which assumes exactly 10 teams with
+-- fixed draft_position slots).
+create or replace function public.undo_make_captain(p_registration_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_registration record;
+  v_team record;
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can undo a captain designation.';
+  end if;
+
+  select * into v_registration
+  from public.season_registrations
+  where id = p_registration_id
+  for update;
+
+  if v_registration is null then
+    raise exception 'Registration not found.';
+  end if;
+  if not v_registration.is_captain or v_registration.team_id is null then
+    raise exception 'That player is not currently a captain.';
+  end if;
+
+  select * into v_team from public.teams where id = v_registration.team_id for update;
+
+  if v_team is null or v_team.captain_id <> v_registration.profile_id then
+    raise exception 'That player is not the captain of their assigned team.';
+  end if;
+
+  if exists (
+    select 1 from public.season_registrations
+    where team_id = v_team.id and id <> p_registration_id
+  ) then
+    raise exception 'Cannot undo -- this team already has other players on it.';
+  end if;
+
+  if exists (select 1 from public.draft_picks where team_id = v_team.id) then
+    raise exception 'Cannot undo -- picks have already been recorded for this team.';
+  end if;
+
+  update public.season_registrations
+  set is_captain = false, team_id = null
+  where id = p_registration_id;
+
+  delete from public.teams where id = v_team.id;
+end;
+$$;
+
 -- Randomizes round-1 order and opens pick #1. Requires exactly 10 teams
 -- (the snake formula is written for exactly 10 slots); only warns (doesn't
 -- block) if the eligible pool isn't a clean multiple of 10, so a slightly
