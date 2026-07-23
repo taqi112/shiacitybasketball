@@ -57,6 +57,14 @@ export function AvatarInput({
 
     setError(null);
     setPreview(URL.createObjectURL(file));
+
+    // Files already under the limit are left completely alone -- decoding a
+    // gallery photo at full resolution just to compress it can require
+    // holding 100+MB of raw pixels in memory even when the file itself is
+    // only a couple MB on disk (high-megapixel phone cameras compress well),
+    // which was crashing the mobile browser tab outright on some photos.
+    if (file.size <= MAX_AVATAR_BYTES) return;
+
     setProcessing(true);
 
     try {
