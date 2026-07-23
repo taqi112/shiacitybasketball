@@ -1,6 +1,6 @@
 export const AVATAR_BUCKET = "avatars";
 
-const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+const MAX_AVATAR_BYTES = 4 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 // No extension -- re-uploading always overwrites the same object instead of
@@ -22,7 +22,7 @@ export function validateAvatarFile(file: File): string | null {
     return "Profile picture must be a JPEG, PNG, or WebP image.";
   }
   if (file.size > MAX_AVATAR_BYTES) {
-    return "Profile picture must be smaller than 5MB.";
+    return "Profile picture must be smaller than 4MB.";
   }
   return null;
 }
