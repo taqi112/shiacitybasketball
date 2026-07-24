@@ -854,3 +854,7 @@ alter table public.legacy_season_stats enable row level security;
 create policy "Legacy stats are viewable by everyone"
   on public.legacy_season_stats for select
   using (true);
+
+-- Nullable -- not every imported season's spreadsheet tracked fouls
+-- (Season 3's didn't; Season 2's does).
+alter table public.legacy_season_stats add column fouls numeric;

@@ -37,6 +37,7 @@ function LegacyStatsTable({ stats }: { stats: LegacySeasonStat[] }) {
                 <th className="px-4 py-2">BLK</th>
                 <th className="px-4 py-2">STL</th>
                 <th className="px-4 py-2">3PM</th>
+                <th className="px-4 py-2">FLS</th>
               </tr>
             </thead>
             <tbody>
@@ -49,6 +50,7 @@ function LegacyStatsTable({ stats }: { stats: LegacySeasonStat[] }) {
                   <td className="px-4 py-2">{Number(p.blocks).toFixed(1)}</td>
                   <td className="px-4 py-2">{Number(p.steals).toFixed(1)}</td>
                   <td className="px-4 py-2">{Number(p.three_pm).toFixed(1)}</td>
+                  <td className="px-4 py-2">{p.fouls != null ? Number(p.fouls).toFixed(1) : "—"}</td>
                 </tr>
               ))}
             </tbody>

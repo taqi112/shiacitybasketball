@@ -108,5 +108,6 @@ export interface LegacySeasonStat {
   blocks: number;
   steals: number;
   three_pm: number;
+  fouls: number | null;
   created_at: string;
 }
