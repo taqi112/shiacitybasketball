@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { getOpenSeason } from "@/lib/season";
 import { AVATAR_BUCKET, avatarPath, validateAvatarFile, withCacheBust } from "@/lib/avatar";
+import { toTitleCase } from "@/lib/format";
 
 export type SignupState = { error?: string } | undefined;
 
@@ -12,7 +13,7 @@ export async function signup(
   _prevState: SignupState,
   formData: FormData,
 ): Promise<SignupState> {
-  const fullName = String(formData.get("fullName") ?? "");
+  const fullName = toTitleCase(String(formData.get("fullName") ?? ""));
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const phone = String(formData.get("phone") ?? "");
