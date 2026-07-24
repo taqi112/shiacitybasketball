@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SeasonEditForm } from "./SeasonEditForm";
 import { MakeCaptainButton } from "./MakeCaptainButton";
 import { SelfRankSelect } from "./SelfRankSelect";
-import { toggleRegistrationPaymentVerified } from "../actions";
+import { EditableName } from "./EditableName";
+import { toggleRegistrationPaymentVerified, toggleFullPaymentVerified } from "../actions";
 import type { Profile, Season, SeasonRegistration, Team } from "@/lib/types";
 
 type RegistrantRow = SeasonRegistration & { profiles: Profile | null; teams: Team | null };
@@ -65,13 +66,14 @@ export default async function AdminSeasonDetailPage({
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Contact</th>
                 <th className="px-4 py-2">Jersey #</th>
+                <th className="px-4 py-2">Age</th>
                 <th className="px-4 py-2">Height</th>
                 <th className="px-4 py-2">Position</th>
                 <th className="px-4 py-2">Self Rank</th>
                 <th className="px-4 py-2">Team</th>
                 <th className="px-4 py-2">Captain</th>
-                <th className="px-4 py-2">Payment Claimed</th>
-                <th className="px-4 py-2">Payment Verified</th>
+                <th className="px-4 py-2">$40 Payment Verified</th>
+                <th className="px-4 py-2">Full $180 Payment Verified</th>
               </tr>
             </thead>
             <tbody>
@@ -91,12 +93,21 @@ export default async function AdminSeasonDetailPage({
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-2">{registrant.profiles?.full_name}</td>
+                  <td className="px-4 py-2">
+                    {registrant.profiles && (
+                      <EditableName
+                        profileId={registrant.profiles.id}
+                        seasonId={id}
+                        fullName={registrant.profiles.full_name}
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-2">
                     {registrant.profiles?.email}
                     {registrant.profiles?.phone && ` · ${registrant.profiles.phone}`}
                   </td>
                   <td className="px-4 py-2">{registrant.jersey_number ?? "—"}</td>
+                  <td className="px-4 py-2">{registrant.profiles?.age ?? "—"}</td>
                   <td className="px-4 py-2">{registrant.profiles?.height ?? "—"}</td>
                   <td className="px-4 py-2">
                     {registrant.profiles?.position?.length
@@ -120,7 +131,6 @@ export default async function AdminSeasonDetailPage({
                       isCaptain={registrant.is_captain}
                     />
                   </td>
-                  <td className="px-4 py-2">{registrant.payment_confirmed ? "Yes" : "No"}</td>
                   <td className="px-4 py-2">
                     <form action={toggleRegistrationPaymentVerified}>
                       <input type="hidden" name="registrationId" value={registrant.id} />
@@ -142,11 +152,32 @@ export default async function AdminSeasonDetailPage({
                       </button>
                     </form>
                   </td>
+                  <td className="px-4 py-2">
+                    <form action={toggleFullPaymentVerified}>
+                      <input type="hidden" name="registrationId" value={registrant.id} />
+                      <input type="hidden" name="seasonId" value={id} />
+                      <input
+                        type="hidden"
+                        name="verified"
+                        value={String(!registrant.full_payment_verified)}
+                      />
+                      <button
+                        type="submit"
+                        className={
+                          registrant.full_payment_verified
+                            ? "rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground"
+                            : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground"
+                        }
+                      >
+                        {registrant.full_payment_verified ? "Verified" : "Mark Verified"}
+                      </button>
+                    </form>
+                  </td>
                 </tr>
               ))}
               {!registrants?.length && (
                 <tr>
-                  <td className="px-4 py-2 text-muted-foreground" colSpan={11}>
+                  <td className="px-4 py-2 text-muted-foreground" colSpan={12}>
                     No registrants yet.
                   </td>
                 </tr>

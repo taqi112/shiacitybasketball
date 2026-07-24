@@ -106,7 +106,47 @@ export async function toggleRegistrationPaymentVerified(formData: FormData) {
   revalidatePath(`/admin/seasons/${seasonId}`);
 }
 
+export async function toggleFullPaymentVerified(formData: FormData) {
+  await requireAdmin();
+
+  const registrationId = String(formData.get("registrationId") ?? "");
+  const seasonId = String(formData.get("seasonId") ?? "");
+  const verified = formData.get("verified") === "true";
+
+  const supabase = await createClient();
+  await supabase
+    .from("season_registrations")
+    .update({ full_payment_verified: verified })
+    .eq("id", registrationId);
+
+  revalidatePath(`/admin/seasons/${seasonId}`);
+}
+
 export type AdminActionState = { error?: string } | undefined;
+
+export async function updateFullName(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  await requireAdmin();
+
+  const profileId = String(formData.get("profileId") ?? "");
+  const seasonId = String(formData.get("seasonId") ?? "");
+  const fullName = String(formData.get("fullName") ?? "").trim();
+
+  if (!fullName) return { error: "Name cannot be empty." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ full_name: fullName })
+    .eq("id", profileId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/seasons/${seasonId}`);
+  return undefined;
+}
 
 export async function updateSelfRank(
   _prevState: AdminActionState,

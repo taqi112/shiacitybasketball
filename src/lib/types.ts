@@ -38,6 +38,7 @@ export interface SeasonRegistration {
   waiver_consent: boolean;
   payment_confirmed: boolean;
   payment_verified: boolean;
+  full_payment_verified: boolean;
   registered_at: string;
 }
 

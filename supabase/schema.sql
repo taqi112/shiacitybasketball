@@ -858,3 +858,9 @@ create policy "Legacy stats are viewable by everyone"
 -- Nullable -- not every imported season's spreadsheet tracked fouls
 -- (Season 3's didn't; Season 2's does).
 alter table public.legacy_season_stats add column fouls numeric;
+
+-- Tracks the remaining $140 (of the season's $180 total) paid in cash
+-- during the first week, separate from payment_verified (the $40 deposit
+-- that gates a spot in the draft pool -- see start_draft/record_draft_pick).
+alter table public.season_registrations
+  add column full_payment_verified boolean not null default false;
