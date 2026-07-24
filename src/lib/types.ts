@@ -103,6 +103,7 @@ export interface LegacySeasonStat {
   season_label: string;
   team_name: string;
   player_name: string;
+  profile_id: string | null;
   games_played: number;
   points: number;
   rebounds: number;

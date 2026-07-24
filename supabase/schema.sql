@@ -864,3 +864,32 @@ alter table public.legacy_season_stats add column fouls numeric;
 -- that gates a spot in the draft pool -- see start_draft/record_draft_pick).
 alter table public.season_registrations
   add column full_payment_verified boolean not null default false;
+
+-- Nullable link from a legacy stat row to a real profile, for players who
+-- signed up on the site and also played in an imported historical season.
+-- Auto-matched by exact name on signup (see the trigger below) -- a
+-- mismatch (nickname, old team sheet using a different name) still needs a
+-- one-off manual UPDATE, since name matching alone can't catch that.
+alter table public.legacy_season_stats
+  add column profile_id uuid references public.profiles(id) on delete set null;
+
+-- Runs once per new signup rather than matching at query time, so a legacy
+-- row someone manually linked (e.g. a name-mismatch case) is never
+-- overwritten and every profile only gets checked once.
+create or replace function public.link_legacy_stats_on_signup()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  update public.legacy_season_stats
+  set profile_id = new.id
+  where profile_id is null
+    and lower(trim(player_name)) = lower(trim(new.full_name));
+  return new;
+end;
+$$;
+
+create trigger link_legacy_stats_on_signup_trigger
+  after insert on public.profiles
+  for each row execute function public.link_legacy_stats_on_signup();

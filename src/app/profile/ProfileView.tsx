@@ -3,17 +3,34 @@
 import { useState } from "react";
 import { ProfileForm } from "./ProfileForm";
 import { PlayerCard } from "./PlayerCard";
+import { PlayerStatsStack } from "./PlayerStatsStack";
 import { Toast } from "@/components/Toast";
-import type { Profile, Season, SeasonRegistration } from "@/lib/types";
+import type { Profile, Season, SeasonRegistration, LegacySeasonStat } from "@/lib/types";
 
 type RegistrationWithSeason = SeasonRegistration & { seasons: Season | null };
+
+type SeasonAverages = {
+  points: number | null;
+  rebounds: number | null;
+  blocks: number | null;
+  steals: number | null;
+  three_pm: number | null;
+};
 
 export function ProfileView({
   profile,
   registration,
+  currentSeasonName,
+  currentSeasonGamesPlayed,
+  currentSeasonAverages,
+  legacyStats,
 }: {
   profile: Profile;
   registration: RegistrationWithSeason | null;
+  currentSeasonName: string;
+  currentSeasonGamesPlayed: number;
+  currentSeasonAverages: SeasonAverages;
+  legacyStats: LegacySeasonStat[];
 }) {
   const [editing, setEditing] = useState(false);
   const [toastKey, setToastKey] = useState(0);
@@ -45,6 +62,12 @@ export function ProfileView({
       ) : (
         <>
           <PlayerCard profile={profile} registration={registration} />
+          <PlayerStatsStack
+            currentSeasonName={currentSeasonName}
+            currentSeasonGamesPlayed={currentSeasonGamesPlayed}
+            currentSeasonAverages={currentSeasonAverages}
+            legacyStats={legacyStats}
+          />
           <button
             type="button"
             onClick={() => setEditing(true)}

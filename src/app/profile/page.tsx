@@ -2,7 +2,8 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileView } from "./ProfileView";
 import { Toast } from "@/components/Toast";
-import type { Profile, Season, SeasonRegistration } from "@/lib/types";
+import { average } from "@/lib/stats";
+import type { Profile, Season, SeasonRegistration, GameStat, LegacySeasonStat } from "@/lib/types";
 
 type RegistrationWithSeason = SeasonRegistration & { seasons: Season | null };
 
@@ -30,6 +31,42 @@ export default async function ProfilePage({ searchParams }: PageProps<"/profile"
 
   if (!profile) return null;
 
+  let currentSeasonName = "Current Season";
+  let currentSeasonGamesPlayed = 0;
+  let currentSeasonAverages = {
+    points: null as number | null,
+    rebounds: null as number | null,
+    blocks: null as number | null,
+    steals: null as number | null,
+    three_pm: null as number | null,
+  };
+
+  if (registration) {
+    currentSeasonName = registration.seasons?.name ?? currentSeasonName;
+
+    const { data: gameStats } = await supabase
+      .from("game_stats")
+      .select("*")
+      .eq("registration_id", registration.id)
+      .overrideTypes<GameStat[], { merge: false }>();
+
+    currentSeasonGamesPlayed = gameStats?.length ?? 0;
+    currentSeasonAverages = {
+      points: average(gameStats ?? [], "points"),
+      rebounds: average(gameStats ?? [], "rebounds"),
+      blocks: average(gameStats ?? [], "blocks"),
+      steals: average(gameStats ?? [], "steals"),
+      three_pm: average(gameStats ?? [], "three_pm"),
+    };
+  }
+
+  const { data: legacyStats } = await supabase
+    .from("legacy_season_stats")
+    .select("*")
+    .eq("profile_id", user.id)
+    .order("season_label", { ascending: false })
+    .overrideTypes<LegacySeasonStat[], { merge: false }>();
+
   return (
     <div className="mx-auto flex max-w-md flex-col gap-8 px-4 py-12">
       {welcome && <Toast message="You're signed up! Welcome to Shia City Basketball." />}
@@ -40,7 +77,14 @@ export default async function ProfilePage({ searchParams }: PageProps<"/profile"
         </p>
       )}
       <h1 className="text-xl font-semibold">Your Profile</h1>
-      <ProfileView profile={profile} registration={registration} />
+      <ProfileView
+        profile={profile}
+        registration={registration}
+        currentSeasonName={currentSeasonName}
+        currentSeasonGamesPlayed={currentSeasonGamesPlayed}
+        currentSeasonAverages={currentSeasonAverages}
+        legacyStats={legacyStats ?? []}
+      />
     </div>
   );
 }

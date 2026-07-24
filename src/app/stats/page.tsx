@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { average } from "@/lib/stats";
 import type {
   Season,
   Game,
@@ -12,8 +13,6 @@ import type {
 } from "@/lib/types";
 
 type RegistrantRow = SeasonRegistration & { profiles: Profile | null; teams: Team | null };
-
-type StatKey = "points" | "rebounds" | "blocks" | "steals" | "three_pm";
 
 function LegacyStatsTable({ stats }: { stats: LegacySeasonStat[] }) {
   const groups = new Map<string, LegacySeasonStat[]>();
@@ -60,12 +59,6 @@ function LegacyStatsTable({ stats }: { stats: LegacySeasonStat[] }) {
       {!stats.length && <p className="text-sm text-muted-foreground">No stats for this season.</p>}
     </div>
   );
-}
-
-function average(rows: GameStat[], key: StatKey) {
-  if (!rows.length) return null;
-  const sum = rows.reduce((acc, r) => acc + Number(r[key]), 0);
-  return sum / rows.length;
 }
 
 async function LiveSeasonStats({ seasonId }: { seasonId: string }) {
