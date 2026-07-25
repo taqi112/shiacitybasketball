@@ -108,7 +108,7 @@ export function DraftPlayerCard({
 
       {registrant.availability_notes && (
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground uppercase">Availability</p>
+          <p className="text-xs text-muted-foreground uppercase">Missing Games?</p>
           <p className="text-sm text-muted-foreground">{registrant.availability_notes}</p>
         </div>
       )}
