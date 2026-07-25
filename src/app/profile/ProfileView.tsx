@@ -56,6 +56,7 @@ export function ProfileView({
             profile={profile}
             registrationId={registration?.id ?? null}
             jerseyNumber={registration?.jersey_number ?? null}
+            captainPreference={registration?.captain_preference ?? null}
             onSuccess={handleSuccess}
           />
         </div>

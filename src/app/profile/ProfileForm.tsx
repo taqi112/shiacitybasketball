@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
 import { AvatarInput } from "@/components/AvatarInput";
 import { PositionPicker } from "@/components/PositionPicker";
+import { CaptainPreferencePicker } from "@/components/CaptainPreferencePicker";
 import type { Profile } from "@/lib/types";
 import { inputClass } from "@/lib/ui";
 
@@ -13,11 +14,13 @@ export function ProfileForm({
   profile,
   registrationId,
   jerseyNumber,
+  captainPreference: initialCaptainPreference,
   onSuccess,
 }: {
   profile: Profile;
   registrationId: string | null;
   jerseyNumber: number | null;
+  captainPreference: string[] | null;
   onSuccess?: () => void;
 }) {
   const [state, formAction] = useActionState(updateProfile, undefined);
@@ -44,6 +47,9 @@ export function ProfileForm({
   }
 
   const [positions, setPositions] = useState<string[]>(profile.position ?? []);
+  const [captainPreference, setCaptainPreference] = useState<string[]>(
+    initialCaptainPreference?.length ? initialCaptainPreference : ["No Preference"],
+  );
   const [jerseySize, setJerseySize] = useState(profile.jersey_size ?? "");
   const [playedBefore, setPlayedBefore] = useState(
     profile.played_before == null ? "" : String(profile.played_before),
@@ -131,6 +137,18 @@ export function ProfileForm({
             className={inputClass}
           />
         </div>
+      )}
+      {registrationId && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium">
+            Which captains would you like to be selected by?
+          </legend>
+          <CaptainPreferencePicker
+            name="captainPreference"
+            selected={captainPreference}
+            onChange={setCaptainPreference}
+          />
+        </fieldset>
       )}
       <fieldset className="flex flex-col gap-1">
         <legend className="text-sm font-medium">Did you play in past seasons?</legend>

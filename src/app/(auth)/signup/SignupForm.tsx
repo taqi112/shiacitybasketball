@@ -7,21 +7,8 @@ import { FormError } from "@/components/FormError";
 import { BubbleCheckbox } from "@/components/BubbleCheckbox";
 import { AvatarInput } from "@/components/AvatarInput";
 import { PositionPicker } from "@/components/PositionPicker";
+import { CaptainPreferencePicker } from "@/components/CaptainPreferencePicker";
 import { inputClass } from "@/lib/ui";
-
-const CAPTAINS = [
-  "Ali Zaidi",
-  "Ali Abbas Naqvi",
-  "Danesh Jafri",
-  "Hasnain Zaidi",
-  "Hussan Ali",
-  "Imran Ladak",
-  "Mo Naqvi",
-  "Syed Daniyal",
-  "Taqi Hussain",
-  "Zain Jafri",
-  "No Preference",
-];
 
 export function SignupForm() {
   const [state, formAction] = useActionState(signup, undefined);
@@ -29,20 +16,6 @@ export function SignupForm() {
   const [captainPreference, setCaptainPreference] = useState<string[]>(["No Preference"]);
   const [waiverConsent, setWaiverConsent] = useState(false);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
-
-  function toggleCaptain(name: string) {
-    setCaptainPreference((prev) => {
-      if (name === "No Preference") {
-        return prev.includes("No Preference") ? prev : ["No Preference"];
-      }
-      const withoutNoPreference = prev.filter((c) => c !== "No Preference");
-      if (withoutNoPreference.includes(name)) {
-        const next = withoutNoPreference.filter((c) => c !== name);
-        return next.length > 0 ? next : ["No Preference"];
-      }
-      return [...withoutNoPreference, name];
-    });
-  }
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -177,28 +150,11 @@ export function SignupForm() {
         <p className="text-xs text-muted-foreground">
           This will be sent to the captains prior to the draft.
         </p>
-        <div className="flex flex-wrap gap-2">
-          {CAPTAINS.map((name) => (
-            <label
-              key={name}
-              className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                captainPreference.includes(name)
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-surface text-foreground"
-              }`}
-            >
-              <input
-                type="checkbox"
-                name="captainPreference"
-                value={name}
-                checked={captainPreference.includes(name)}
-                onChange={() => toggleCaptain(name)}
-                className="sr-only"
-              />
-              {name}
-            </label>
-          ))}
-        </div>
+        <CaptainPreferencePicker
+          name="captainPreference"
+          selected={captainPreference}
+          onChange={setCaptainPreference}
+        />
       </fieldset>
       <div className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4">
         <p className="text-sm font-medium">Liability Waiver &amp; Media Consent</p>

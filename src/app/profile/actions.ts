@@ -18,6 +18,7 @@ export async function updateProfile(
   const registrationId = String(formData.get("registrationId") ?? "");
   const jerseyNumber = String(formData.get("jerseyNumber") ?? "");
   const positions = formData.getAll("position").map(String);
+  const captainPreference = formData.getAll("captainPreference").map(String);
 
   if (positions.length === 0) {
     return { error: "Please select at least one position." };
@@ -63,7 +64,10 @@ export async function updateProfile(
   if (registrationId) {
     const { error: registrationError } = await supabase
       .from("season_registrations")
-      .update({ jersey_number: jerseyNumber ? Number(jerseyNumber) : null })
+      .update({
+        jersey_number: jerseyNumber ? Number(jerseyNumber) : null,
+        ...(captainPreference.length ? { captain_preference: captainPreference } : {}),
+      })
       .eq("id", registrationId)
       .eq("profile_id", user.id);
 
