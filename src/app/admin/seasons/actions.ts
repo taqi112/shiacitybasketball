@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 import { requireAdmin } from "@/lib/auth";
+import { AVATAR_BUCKET, avatarPath, validateAvatarFile, withCacheBust } from "@/lib/avatar";
 
 export type SeasonFormState = { error?: string } | undefined;
 
@@ -140,6 +142,68 @@ export async function updateFullName(
   const { error } = await supabase
     .from("profiles")
     .update({ full_name: fullName })
+    .eq("id", profileId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/seasons/${seasonId}`);
+  return undefined;
+}
+
+export async function updateHeight(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  await requireAdmin();
+
+  const profileId = String(formData.get("profileId") ?? "");
+  const seasonId = String(formData.get("seasonId") ?? "");
+  const height = String(formData.get("height") ?? "").trim();
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ height: height || null })
+    .eq("id", profileId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/seasons/${seasonId}`);
+  return undefined;
+}
+
+export async function updateAvatar(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  await requireAdmin();
+
+  const profileId = String(formData.get("profileId") ?? "");
+  const seasonId = String(formData.get("seasonId") ?? "");
+  const photo = formData.get("photo");
+
+  if (!(photo instanceof File) || photo.size === 0) {
+    return { error: "No photo selected." };
+  }
+  const validationError = validateAvatarFile(photo);
+  if (validationError) return { error: validationError };
+
+  const path = avatarPath(profileId);
+  const storage = createServiceRoleClient();
+  const { error: uploadError } = await storage.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, photo, { upsert: true, contentType: photo.type });
+
+  if (uploadError) return { error: uploadError.message };
+
+  const {
+    data: { publicUrl },
+  } = storage.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ photo_url: withCacheBust(publicUrl) })
     .eq("id", profileId);
 
   if (error) return { error: error.message };

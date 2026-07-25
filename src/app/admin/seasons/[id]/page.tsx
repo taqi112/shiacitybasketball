@@ -5,6 +5,8 @@ import { SeasonEditForm } from "./SeasonEditForm";
 import { MakeCaptainButton } from "./MakeCaptainButton";
 import { SelfRankSelect } from "./SelfRankSelect";
 import { EditableName } from "./EditableName";
+import { EditableHeight } from "./EditableHeight";
+import { EditableAvatar } from "./EditableAvatar";
 import { toggleRegistrationPaymentVerified, toggleFullPaymentVerified } from "../actions";
 import type { Profile, Season, SeasonRegistration, Team } from "@/lib/types";
 
@@ -80,17 +82,13 @@ export default async function AdminSeasonDetailPage({
               {registrants?.map((registrant) => (
                 <tr key={registrant.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-2">
-                    {registrant.profiles?.photo_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={registrant.profiles.photo_url}
-                        alt={registrant.profiles.full_name}
-                        className="h-10 w-10 rounded-full border border-border object-cover"
+                    {registrant.profiles && (
+                      <EditableAvatar
+                        profileId={registrant.profiles.id}
+                        seasonId={id}
+                        photoUrl={registrant.profiles.photo_url}
+                        fullName={registrant.profiles.full_name}
                       />
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-xs text-muted-foreground">
-                        {registrant.profiles?.full_name.charAt(0).toUpperCase()}
-                      </div>
                     )}
                   </td>
                   <td className="px-4 py-2">
@@ -108,7 +106,15 @@ export default async function AdminSeasonDetailPage({
                   </td>
                   <td className="px-4 py-2">{registrant.jersey_number ?? "—"}</td>
                   <td className="px-4 py-2">{registrant.profiles?.age ?? "—"}</td>
-                  <td className="px-4 py-2">{registrant.profiles?.height ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    {registrant.profiles && (
+                      <EditableHeight
+                        profileId={registrant.profiles.id}
+                        seasonId={id}
+                        height={registrant.profiles.height}
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-2">
                     {registrant.profiles?.position?.length
                       ? registrant.profiles.position.join(" / ")
