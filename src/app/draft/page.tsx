@@ -1,18 +1,12 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 import { getCurrentSeason, getDraftSeason } from "@/lib/season";
 import { DraftResults } from "@/components/draft/DraftResults";
 import { DraftPool } from "./DraftPool";
-import type {
-  Team,
-  DraftPick,
-  Profile,
-  SeasonRegistration,
-  LegacySeasonStat,
-} from "@/lib/types";
-
-type PoolRegistrant = SeasonRegistration & { profiles: Profile | null };
+import type { PoolRegistrant } from "./DraftPlayerCard";
+import type { Team, DraftPick, LegacySeasonStat } from "@/lib/types";
 
 async function renderPool() {
   const season = await getCurrentSeason();
@@ -20,11 +14,21 @@ async function renderPool() {
     return <p className="text-sm text-muted-foreground">No season has been set up yet.</p>;
   }
 
-  const supabase = await createClient();
+  // Regular users can only read their own season_registrations/profiles row
+  // via RLS (see "Users can view their own registrations"/"...profile") --
+  // there's no public-select policy on either, unlike teams/draft_picks. The
+  // draft pool is meant to be visible to every logged-in user (requireUser()
+  // below is the actual gate), so this reads via the service-role client
+  // instead of opening those tables up more broadly. The select list is
+  // deliberately narrow -- it never fetches email/phone/payment fields,
+  // since this data gets passed straight into a Client Component.
+  const supabase = createServiceRoleClient();
 
   const { data: registrants } = await supabase
     .from("season_registrations")
-    .select("*, profiles(*)")
+    .select(
+      "id, jersey_number, captain_preference, availability_notes, profiles(id, full_name, photo_url, self_rank, height, age, position)",
+    )
     .eq("season_id", season.id)
     .eq("is_captain", false)
     .eq("payment_verified", true)

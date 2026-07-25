@@ -1,10 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { DraftPlayerCard } from "./DraftPlayerCard";
-import type { LegacySeasonStat, Profile, SeasonRegistration } from "@/lib/types";
-
-type PoolRegistrant = SeasonRegistration & { profiles: Profile | null };
+import { DraftPlayerCard, type PoolRegistrant } from "./DraftPlayerCard";
+import type { LegacySeasonStat } from "@/lib/types";
 
 export function DraftPool({
   registrants,

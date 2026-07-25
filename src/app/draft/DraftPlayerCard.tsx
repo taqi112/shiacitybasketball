@@ -1,6 +1,22 @@
 import { SeasonStatsCard } from "@/components/SeasonStatsCard";
 import type { LegacySeasonStat, Profile, SeasonRegistration } from "@/lib/types";
 
+// Matches the deliberately narrow columns the draft pool query actually
+// selects (see src/app/draft/page.tsx) -- never the full row, since this
+// shape gets passed straight into a Client Component and should never
+// carry email/phone/payment fields to the browser.
+export type PoolProfile = Pick<
+  Profile,
+  "id" | "full_name" | "photo_url" | "self_rank" | "height" | "age" | "position"
+>;
+
+export type PoolRegistrant = Pick<
+  SeasonRegistration,
+  "id" | "jersey_number" | "captain_preference" | "availability_notes"
+> & {
+  profiles: PoolProfile | null;
+};
+
 // Color-coded by self-rank tier -- doubles as a quick visual "how good is
 // this player" signal while scrolling the pool, not just decoration.
 const RANK_COLORS: Record<number, string> = {
@@ -25,7 +41,7 @@ export function DraftPlayerCard({
   registrant,
   legacyStats,
 }: {
-  registrant: SeasonRegistration & { profiles: Profile | null };
+  registrant: PoolRegistrant;
   legacyStats: LegacySeasonStat[];
 }) {
   const profile = registrant.profiles;
