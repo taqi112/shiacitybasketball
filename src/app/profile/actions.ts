@@ -14,7 +14,6 @@ export async function updateProfile(
 ): Promise<ProfileState> {
   const user = await requireUser();
 
-  const selfRank = String(formData.get("selfRank") ?? "");
   const playedBefore = String(formData.get("playedBefore") ?? "");
   const registrationId = String(formData.get("registrationId") ?? "");
   const jerseyNumber = String(formData.get("jerseyNumber") ?? "");
@@ -53,7 +52,6 @@ export async function updateProfile(
       phone: String(formData.get("phone") ?? ""),
       position: positions,
       height: String(formData.get("height") ?? ""),
-      self_rank: selfRank ? Number(selfRank) : null,
       jersey_size: String(formData.get("jerseySize") ?? "") || null,
       played_before: playedBefore ? playedBefore === "true" : null,
       ...(photoUrl ? { photo_url: photoUrl } : {}),

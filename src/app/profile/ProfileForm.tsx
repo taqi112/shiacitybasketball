@@ -44,9 +44,6 @@ export function ProfileForm({
   }
 
   const [positions, setPositions] = useState<string[]>(profile.position ?? []);
-  const [selfRank, setSelfRank] = useState(
-    profile.self_rank != null ? String(profile.self_rank) : "",
-  );
   const [jerseySize, setJerseySize] = useState(profile.jersey_size ?? "");
   const [playedBefore, setPlayedBefore] = useState(
     profile.played_before == null ? "" : String(profile.played_before),
@@ -94,27 +91,6 @@ export function ProfileForm({
           defaultValue={profile.height ?? ""}
           className={inputClass}
         />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="selfRank" className="text-sm font-medium">
-          Self Ranking
-        </label>
-        <select
-          id="selfRank"
-          name="selfRank"
-          value={selfRank}
-          onChange={(e) => setSelfRank(e.target.value)}
-          className={inputClass}
-        >
-          <option value="" disabled>
-            Select a Rating
-          </option>
-          <option value="1">1 - Very beginner</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5 - Advanced</option>
-        </select>
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="jerseySize" className="text-sm font-medium">

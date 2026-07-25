@@ -893,3 +893,27 @@ $$;
 create trigger link_legacy_stats_on_signup_trigger
   after insert on public.profiles
   for each row execute function public.link_legacy_stats_on_signup();
+
+-- Self rank is now admin-only (players used to self-report it at signup and
+-- edit it on their profile). The app UI no longer offers a way to change
+-- it, but "Users can update their own profile" is row-level, not
+-- column-level, so without this a player could still PATCH self_rank
+-- directly via the API. Same pattern as protect_is_admin.
+create or replace function public.protect_self_rank()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if new.self_rank is distinct from old.self_rank
+     and auth.uid() is not null
+     and not public.is_admin() then
+    new.self_rank := old.self_rank;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger protect_self_rank_trigger
+  before update on public.profiles
+  for each row execute function public.protect_self_rank();
