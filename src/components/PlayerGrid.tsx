@@ -1,15 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { DraftPlayerCard, type PoolRegistrant } from "./DraftPlayerCard";
+import { PlayerProfileCard, type PlayerCardRegistrant } from "./PlayerProfileCard";
 import type { LegacySeasonStat } from "@/lib/types";
 
-export function DraftPool({
+export function PlayerGrid({
   registrants,
   legacyStatsByProfile,
+  emptyMessage = "No players yet.",
 }: {
-  registrants: PoolRegistrant[];
+  registrants: PlayerCardRegistrant[];
   legacyStatsByProfile: Record<string, LegacySeasonStat[]>;
+  emptyMessage?: string;
 }) {
   const [search, setSearch] = useState("");
 
@@ -31,7 +33,7 @@ export function DraftPool({
       {filtered.length ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((r) => (
-            <DraftPlayerCard
+            <PlayerProfileCard
               key={r.id}
               registrant={r}
               legacyStats={r.profiles ? (legacyStatsByProfile[r.profiles.id] ?? []) : []}
@@ -40,7 +42,7 @@ export function DraftPool({
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          {registrants.length ? `No players match "${search}".` : "No draftable players yet."}
+          {registrants.length ? `No players match "${search}".` : emptyMessage}
         </p>
       )}
     </div>

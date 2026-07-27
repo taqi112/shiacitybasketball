@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { getCurrentSeason, getDraftSeason } from "@/lib/season";
 import { DraftResults } from "@/components/draft/DraftResults";
-import { DraftPool } from "./DraftPool";
-import type { PoolRegistrant } from "./DraftPlayerCard";
+import { PlayerGrid } from "@/components/PlayerGrid";
+import type { PlayerCardRegistrant } from "@/components/PlayerProfileCard";
 import type { Team, DraftPick, LegacySeasonStat } from "@/lib/types";
 
 async function renderPool() {
@@ -34,7 +34,7 @@ async function renderPool() {
     .eq("payment_verified", true)
     .is("team_id", null)
     .order("registered_at", { ascending: true })
-    .overrideTypes<PoolRegistrant[], { merge: false }>();
+    .overrideTypes<PlayerCardRegistrant[], { merge: false }>();
 
   const pool = registrants ?? [];
   const profileIds = pool
@@ -63,7 +63,13 @@ async function renderPool() {
     return (a.profiles?.full_name ?? "").localeCompare(b.profiles?.full_name ?? "");
   });
 
-  return <DraftPool registrants={sorted} legacyStatsByProfile={legacyByProfile} />;
+  return (
+    <PlayerGrid
+      registrants={sorted}
+      legacyStatsByProfile={legacyByProfile}
+      emptyMessage="No draftable players yet."
+    />
+  );
 }
 
 async function renderResults(draftSeason: Awaited<ReturnType<typeof getDraftSeason>>) {

@@ -29,6 +29,7 @@ export async function NavBar() {
             <Link href="/schedule">Schedule</Link>
             <Link href="/draft">Draft</Link>
             <Link href="/teams">Teams</Link>
+            <Link href="/players">Players</Link>
             <Link href="/stats">Stats</Link>
             {profile.is_admin && <Link href="/admin/seasons">Admin</Link>}
             <form action={logout} className="contents">
