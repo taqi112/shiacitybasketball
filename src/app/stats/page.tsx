@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { average } from "@/lib/stats";
+import { buildTeamColorMap } from "@/lib/teamColors";
 import type {
   Season,
   Game,
@@ -64,24 +65,35 @@ function LegacyStatsTable({ stats }: { stats: LegacySeasonStat[] }) {
 async function LiveSeasonStats({ seasonId }: { seasonId: string }) {
   const supabase = await createClient();
 
-  const [{ data: registrants }, { data: gameStats }, { data: games }] = await Promise.all([
-    supabase
-      .from("season_registrations")
-      .select("*, profiles(*), teams(*)")
-      .eq("season_id", seasonId)
-      .overrideTypes<RegistrantRow[], { merge: false }>(),
-    supabase
-      .from("game_stats")
-      .select("*")
-      .eq("season_id", seasonId)
-      .overrideTypes<GameStat[], { merge: false }>(),
-    supabase
-      .from("games")
-      .select("*")
-      .eq("season_id", seasonId)
-      .order("date", { ascending: true })
-      .overrideTypes<Game[], { merge: false }>(),
-  ]);
+  const [{ data: registrants }, { data: gameStats }, { data: games }, { data: teams }] =
+    await Promise.all([
+      supabase
+        .from("season_registrations")
+        .select("*, profiles(*), teams(*)")
+        .eq("season_id", seasonId)
+        .overrideTypes<RegistrantRow[], { merge: false }>(),
+      supabase
+        .from("game_stats")
+        .select("*")
+        .eq("season_id", seasonId)
+        .overrideTypes<GameStat[], { merge: false }>(),
+      supabase
+        .from("games")
+        .select("*")
+        .eq("season_id", seasonId)
+        .order("date", { ascending: true })
+        .overrideTypes<Game[], { merge: false }>(),
+      supabase
+        .from("teams")
+        .select("*")
+        .eq("season_id", seasonId)
+        .order("draft_position", { ascending: true, nullsFirst: false })
+        .overrideTypes<Team[], { merge: false }>(),
+    ]);
+
+  // Same palette + assignment order (draft_position) as the schedule and
+  // Teams pages, so a given team is always the same color everywhere.
+  const teamColorMap = buildTeamColorMap((teams ?? []).map((t) => t.id));
 
   const statsByRegistration = new Map<string, GameStat[]>();
   for (const stat of gameStats ?? []) {
@@ -90,54 +102,63 @@ async function LiveSeasonStats({ seasonId }: { seasonId: string }) {
     statsByRegistration.set(stat.registration_id, list);
   }
 
-  const groups = new Map<string, RegistrantRow[]>();
+  const groups = new Map<string, { teamId: string | null; registrants: RegistrantRow[] }>();
   for (const r of registrants ?? []) {
     const teamName = r.teams?.name ?? "Unassigned";
-    const list = groups.get(teamName) ?? [];
-    list.push(r);
-    groups.set(teamName, list);
+    const group = groups.get(teamName) ?? { teamId: r.teams?.id ?? null, registrants: [] };
+    group.registrants.push(r);
+    groups.set(teamName, group);
   }
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-6">
-        {[...groups.entries()].map(([teamName, teamRegistrants]) => (
-          <div key={teamName} className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="px-4 py-2">{teamName}</th>
-                  <th className="px-4 py-2">GP</th>
-                  <th className="px-4 py-2">PTS</th>
-                  <th className="px-4 py-2">REB</th>
-                  <th className="px-4 py-2">BLK</th>
-                  <th className="px-4 py-2">STL</th>
-                  <th className="px-4 py-2">3PM</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teamRegistrants.map((r) => {
-                  const rows = statsByRegistration.get(r.id) ?? [];
-                  return (
-                    <tr key={r.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-2">{r.profiles?.full_name}</td>
-                      <td className="px-4 py-2">{rows.length}</td>
-                      <td className="px-4 py-2">{average(rows, "points")?.toFixed(1) ?? "—"}</td>
-                      <td className="px-4 py-2">
-                        {average(rows, "rebounds")?.toFixed(1) ?? "—"}
-                      </td>
-                      <td className="px-4 py-2">{average(rows, "blocks")?.toFixed(1) ?? "—"}</td>
-                      <td className="px-4 py-2">{average(rows, "steals")?.toFixed(1) ?? "—"}</td>
-                      <td className="px-4 py-2">
-                        {average(rows, "three_pm")?.toFixed(1) ?? "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ))}
+        {[...groups.entries()].map(([teamName, { teamId, registrants: teamRegistrants }]) => {
+          const color = teamId ? teamColorMap.get(teamId) : undefined;
+          return (
+            <div key={teamName} className="overflow-hidden rounded-lg border border-border">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className={color ? `${color.bg} ${color.text}` : "border-b border-border"}>
+                    <th className="px-4 py-2 font-display tracking-wide uppercase">{teamName}</th>
+                    <th className="px-4 py-2">GP</th>
+                    <th className="px-4 py-2">PTS</th>
+                    <th className="px-4 py-2">REB</th>
+                    <th className="px-4 py-2">BLK</th>
+                    <th className="px-4 py-2">STL</th>
+                    <th className="px-4 py-2">3PM</th>
+                  </tr>
+                </thead>
+                <tbody
+                  style={
+                    color
+                      ? { background: `linear-gradient(to bottom, ${color.hex}33, var(--surface) 60%)` }
+                      : undefined
+                  }
+                >
+                  {teamRegistrants.map((r) => {
+                    const rows = statsByRegistration.get(r.id) ?? [];
+                    return (
+                      <tr key={r.id} className="border-b border-border last:border-0">
+                        <td className="px-4 py-2">{r.profiles?.full_name}</td>
+                        <td className="px-4 py-2">{rows.length}</td>
+                        <td className="px-4 py-2">{average(rows, "points")?.toFixed(1) ?? "—"}</td>
+                        <td className="px-4 py-2">
+                          {average(rows, "rebounds")?.toFixed(1) ?? "—"}
+                        </td>
+                        <td className="px-4 py-2">{average(rows, "blocks")?.toFixed(1) ?? "—"}</td>
+                        <td className="px-4 py-2">{average(rows, "steals")?.toFixed(1) ?? "—"}</td>
+                        <td className="px-4 py-2">
+                          {average(rows, "three_pm")?.toFixed(1) ?? "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
         {!registrants?.length && (
           <p className="text-sm text-muted-foreground">No registrants yet.</p>
         )}
