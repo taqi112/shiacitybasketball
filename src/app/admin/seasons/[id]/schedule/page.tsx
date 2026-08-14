@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CreateGameForm } from "./CreateGameForm";
 import { deleteGame } from "./actions";
 import { formatTime } from "@/lib/datetime";
-import type { Season, Game } from "@/lib/types";
+import type { Season, Game, Team } from "@/lib/types";
 
 export default async function AdminSchedulePage({
   params,
@@ -20,12 +20,21 @@ export default async function AdminSchedulePage({
 
   if (!season) notFound();
 
+  const { data: teams } = await supabase
+    .from("teams")
+    .select("*")
+    .eq("season_id", id)
+    .order("draft_position", { ascending: true, nullsFirst: false })
+    .overrideTypes<Team[], { merge: false }>();
+
   const { data: games } = await supabase
     .from("games")
     .select("*")
     .eq("season_id", id)
     .order("date", { ascending: true })
     .overrideTypes<Game[], { merge: false }>();
+
+  const teamNameById = new Map((teams ?? []).map((t) => [t.id, t.name]));
 
   return (
     <div className="flex flex-col gap-8">
@@ -37,6 +46,8 @@ export default async function AdminSchedulePage({
               <th className="px-4 py-2">Date</th>
               <th className="px-4 py-2">Time</th>
               <th className="px-4 py-2">Venue</th>
+              <th className="px-4 py-2">Court</th>
+              <th className="px-4 py-2">Matchup</th>
               <th className="px-4 py-2">Type</th>
               <th className="px-4 py-2"></th>
               <th className="px-4 py-2"></th>
@@ -56,6 +67,12 @@ export default async function AdminSchedulePage({
                   {formatTime(game.start_time)}–{formatTime(game.end_time)}
                 </td>
                 <td className="px-4 py-2">{game.venue}</td>
+                <td className="px-4 py-2">{game.court ?? "—"}</td>
+                <td className="px-4 py-2">
+                  {game.home_team_id || game.away_team_id
+                    ? `${game.home_team_id ? (teamNameById.get(game.home_team_id) ?? "—") : "TBD"} vs ${game.away_team_id ? (teamNameById.get(game.away_team_id) ?? "—") : "TBD"}`
+                    : "—"}
+                </td>
                 <td className="px-4 py-2">
                   {game.game_type === "playoff" ? "Playoff" : "Regular Season"}
                 </td>
@@ -83,7 +100,7 @@ export default async function AdminSchedulePage({
             ))}
             {!games?.length && (
               <tr>
-                <td className="px-4 py-2 text-muted-foreground" colSpan={6}>
+                <td className="px-4 py-2 text-muted-foreground" colSpan={8}>
                   No games scheduled yet.
                 </td>
               </tr>
@@ -91,7 +108,7 @@ export default async function AdminSchedulePage({
           </tbody>
         </table>
       </div>
-      <CreateGameForm seasonId={id} />
+      <CreateGameForm seasonId={id} teams={teams ?? []} />
     </div>
   );
 }

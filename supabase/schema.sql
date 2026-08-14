@@ -917,3 +917,10 @@ $$;
 create trigger protect_self_rank_trigger
   before update on public.profiles
   for each row execute function public.protect_self_rank();
+
+-- Nullable -- the draft has now happened so real matchups can be scheduled,
+-- but playoff games still won't have a matchup (or court) until seeding is
+-- decided by regular-season standings.
+alter table public.games add column court text;
+alter table public.games add column home_team_id uuid references public.teams(id);
+alter table public.games add column away_team_id uuid references public.teams(id);

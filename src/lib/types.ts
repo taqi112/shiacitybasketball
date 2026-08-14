@@ -81,6 +81,9 @@ export interface Game {
   start_time: string;
   end_time: string;
   venue: string;
+  court: string | null;
+  home_team_id: string | null;
+  away_team_id: string | null;
   game_type: "regular_season" | "playoff";
   created_at: string;
 }

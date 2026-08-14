@@ -17,6 +17,9 @@ export async function createGame(
   const startTime = String(formData.get("startTime") ?? "");
   const endTime = String(formData.get("endTime") ?? "");
   const venue = String(formData.get("venue") ?? "");
+  const court = String(formData.get("court") ?? "").trim();
+  const homeTeamId = String(formData.get("homeTeamId") ?? "");
+  const awayTeamId = String(formData.get("awayTeamId") ?? "");
   const gameType = String(formData.get("gameType") ?? "regular_season");
 
   if (!date || !startTime || !endTime || !venue) {
@@ -30,6 +33,9 @@ export async function createGame(
     start_time: startTime,
     end_time: endTime,
     venue,
+    court: court || null,
+    home_team_id: homeTeamId || null,
+    away_team_id: awayTeamId || null,
     game_type: gameType,
   });
 

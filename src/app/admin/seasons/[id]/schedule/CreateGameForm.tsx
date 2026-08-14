@@ -5,8 +5,9 @@ import { createGame } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
 import { inputClass } from "@/lib/ui";
+import type { Team } from "@/lib/types";
 
-export function CreateGameForm({ seasonId }: { seasonId: string }) {
+export function CreateGameForm({ seasonId, teams }: { seasonId: string; teams: Team[] }) {
   const [state, formAction] = useActionState(createGame, undefined);
 
   return (
@@ -14,7 +15,7 @@ export function CreateGameForm({ seasonId }: { seasonId: string }) {
       action={formAction}
       className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4"
     >
-      <h2 className="font-medium">Add Game Date</h2>
+      <h2 className="font-medium">Add Game</h2>
       <input type="hidden" name="seasonId" value={seasonId} />
       <FormError message={state?.error} />
       <div className="flex flex-col gap-1">
@@ -48,6 +49,40 @@ export function CreateGameForm({ seasonId }: { seasonId: string }) {
           defaultValue="BR @ The Fieldhouse, Massapequa"
           className={inputClass}
         />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="court" className="text-sm font-medium">
+          Court (optional)
+        </label>
+        <input id="court" name="court" placeholder="e.g. Court 1" className={inputClass} />
+      </div>
+      <div className="flex gap-4">
+        <div className="flex flex-1 flex-col gap-1">
+          <label htmlFor="homeTeamId" className="text-sm font-medium">
+            Home Team
+          </label>
+          <select id="homeTeamId" name="homeTeamId" defaultValue="" className={inputClass}>
+            <option value="">TBD</option>
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-1 flex-col gap-1">
+          <label htmlFor="awayTeamId" className="text-sm font-medium">
+            Away Team
+          </label>
+          <select id="awayTeamId" name="awayTeamId" defaultValue="" className={inputClass}>
+            <option value="">TBD</option>
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="gameType" className="text-sm font-medium">
