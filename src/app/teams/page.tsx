@@ -1,6 +1,7 @@
 import { requireUser, getCurrentProfile } from "@/lib/auth";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { getCurrentSeason } from "@/lib/season";
+import { buildTeamColorMap } from "@/lib/teamColors";
 import type { Team, SeasonRegistration, Profile } from "@/lib/types";
 
 type RosterEntry = SeasonRegistration & { profiles: Profile | null };
@@ -56,6 +57,10 @@ export default async function TeamsPage() {
     roster.sort((a, b) => Number(b.is_captain) - Number(a.is_captain));
   }
 
+  // Same palette + assignment order (draft_position) as the schedule page,
+  // so a given team is always the same color everywhere on the site.
+  const teamColorMap = buildTeamColorMap((teams ?? []).map((t) => t.id));
+
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-12">
       <h1 className="text-xl font-semibold">Teams</h1>
@@ -63,10 +68,18 @@ export default async function TeamsPage() {
         {(teams ?? []).map((team) => {
           const roster = rosterByTeam.get(team.id) ?? [];
           const showPhones = team.id === myCaptainTeamId;
+          const color = teamColorMap.get(team.id);
           return (
-            <div key={team.id} className="rounded-lg border border-border bg-surface p-4">
-              <p className="mb-2 font-display tracking-wide uppercase">{team.name}</p>
-              <ul className="flex flex-col gap-1 text-sm">
+            <div
+              key={team.id}
+              className="overflow-hidden rounded-lg border border-border bg-surface"
+            >
+              <p
+                className={`px-4 py-3 font-display tracking-wide uppercase ${color?.bg ?? "bg-background"} ${color?.text ?? "text-foreground"}`}
+              >
+                {team.name}
+              </p>
+              <ul className="flex flex-col gap-1 p-4 text-sm">
                 {roster.map((r) => (
                   <li key={r.id} className="text-muted-foreground">
                     <span className={r.is_captain ? "font-medium text-foreground" : undefined}>
