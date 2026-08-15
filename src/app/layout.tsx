@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Anton } from "next/font/google";
+import { Geist, Geist_Mono, Anton, Alex_Brush } from "next/font/google";
 import { NavBar } from "@/components/NavBar";
 import { BrandTexture } from "@/components/BrandTexture";
 import "./globals.css";
@@ -20,6 +20,12 @@ const anton = Anton({
   subsets: ["latin"],
 });
 
+const alexBrush = Alex_Brush({
+  variable: "--font-alex-brush",
+  weight: "400",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://shiacity.org"),
   title: "Shia City Basketball",
@@ -34,7 +40,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${anton.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${anton.variable} ${alexBrush.variable} h-full antialiased`}
     >
       <body className="relative flex min-h-full flex-col">
         <BrandTexture className="fixed inset-0 -z-10" />

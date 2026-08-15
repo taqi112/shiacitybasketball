@@ -5,9 +5,12 @@ import { ProfileForm } from "./ProfileForm";
 import { PlayerCard } from "./PlayerCard";
 import { PlayerStatsStack } from "./PlayerStatsStack";
 import { Toast } from "@/components/Toast";
-import type { Profile, Season, SeasonRegistration, LegacySeasonStat } from "@/lib/types";
+import type { Profile, Season, SeasonRegistration, Team, LegacySeasonStat } from "@/lib/types";
 
-type RegistrationWithSeason = SeasonRegistration & { seasons: Season | null };
+type RegistrationWithSeason = SeasonRegistration & {
+  seasons: Season | null;
+  teams: Pick<Team, "name"> | null;
+};
 
 type SeasonAverages = {
   points: number | null;

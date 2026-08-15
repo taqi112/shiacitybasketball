@@ -1,4 +1,5 @@
 import { SeasonStatsCard } from "@/components/SeasonStatsCard";
+import { CaptainBadge } from "@/components/CaptainBadge";
 import type { LegacySeasonStat, Profile, SeasonRegistration } from "@/lib/types";
 
 // Deliberately narrow -- never the full row, since this shape gets passed
@@ -39,9 +40,13 @@ const RANK_BORDER_COLORS: Record<number, string> = {
 export function PlayerProfileCard({
   registrant,
   legacyStats,
+  currentTeamName,
+  isCaptain,
 }: {
   registrant: PlayerCardRegistrant;
   legacyStats: LegacySeasonStat[];
+  currentTeamName?: string | null;
+  isCaptain?: boolean;
 }) {
   const profile = registrant.profiles;
   if (!profile) return null;
@@ -55,18 +60,23 @@ export function PlayerProfileCard({
       className={`flex flex-col gap-4 rounded-lg border-2 bg-surface p-5 ${rankBorderColor ?? "border-border"}`}
     >
       <div className="flex items-start gap-4">
-        {profile.photo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={profile.photo_url}
-            alt={profile.full_name}
-            className="h-20 w-20 flex-shrink-0 rounded-full border border-border object-cover"
-          />
-        ) : (
-          <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full border border-border bg-background font-display text-2xl text-muted-foreground">
-            {profile.full_name.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <div className="flex flex-shrink-0 flex-col items-center">
+          {profile.photo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profile.photo_url}
+              alt={profile.full_name}
+              className="h-20 w-20 rounded-full border border-border object-cover"
+            />
+          ) : (
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-border bg-background font-display text-2xl text-muted-foreground">
+              {profile.full_name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <p className="font-signature -mt-1 text-xl whitespace-nowrap text-accent">
+            {profile.full_name}
+          </p>
+        </div>
         <div className="flex flex-1 items-start justify-between gap-2">
           <div>
             <h3 className="font-display text-xl leading-tight tracking-wide uppercase">
@@ -75,14 +85,20 @@ export function PlayerProfileCard({
             {profile.position && profile.position.length > 0 && (
               <p className="text-sm text-muted-foreground">{profile.position.join(" / ")}</p>
             )}
+            {currentTeamName && (
+              <p className="mt-1 text-sm text-muted-foreground">{currentTeamName}</p>
+            )}
           </div>
-          <div
-            className={`flex h-10 w-10 flex-shrink-0 flex-col items-center justify-center rounded-md font-display text-lg ${
-              rankColor ?? "border border-border text-muted-foreground"
-            }`}
-            title="Self rank"
-          >
-            {rank ?? "—"}
+          <div className="flex flex-shrink-0 flex-col items-center gap-1">
+            {isCaptain && <CaptainBadge className="h-16 w-16" />}
+            <div
+              className={`flex h-10 w-10 flex-shrink-0 flex-col items-center justify-center rounded-md font-display text-lg ${
+                rankColor ?? "border border-border text-muted-foreground"
+              }`}
+              title="Self rank"
+            >
+              {rank ?? "—"}
+            </div>
           </div>
         </div>
       </div>
@@ -104,29 +120,6 @@ export function PlayerProfileCard({
           </span>
         )}
       </div>
-
-      {registrant.captain_preference && registrant.captain_preference.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground uppercase">Captain Preference</p>
-          <div className="flex flex-wrap gap-1">
-            {registrant.captain_preference.map((name) => (
-              <span
-                key={name}
-                className="rounded-full border border-border bg-background px-2 py-0.5 text-xs"
-              >
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {registrant.availability_notes && (
-        <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground uppercase">Missing Games?</p>
-          <p className="text-sm text-muted-foreground">{registrant.availability_notes}</p>
-        </div>
-      )}
 
       {legacyStats.length > 0 && (
         <div className="flex flex-col gap-2">

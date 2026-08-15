@@ -3,9 +3,19 @@ import { createClient } from "@/lib/supabase/server";
 import { ProfileView } from "./ProfileView";
 import { Toast } from "@/components/Toast";
 import { average } from "@/lib/stats";
-import type { Profile, Season, SeasonRegistration, GameStat, LegacySeasonStat } from "@/lib/types";
+import type {
+  Profile,
+  Season,
+  SeasonRegistration,
+  Team,
+  GameStat,
+  LegacySeasonStat,
+} from "@/lib/types";
 
-type RegistrationWithSeason = SeasonRegistration & { seasons: Season | null };
+type RegistrationWithSeason = SeasonRegistration & {
+  seasons: Season | null;
+  teams: Pick<Team, "name"> | null;
+};
 
 export default async function ProfilePage({ searchParams }: PageProps<"/profile">) {
   const params = await searchParams;
@@ -23,7 +33,7 @@ export default async function ProfilePage({ searchParams }: PageProps<"/profile"
 
   const { data: registration } = await supabase
     .from("season_registrations")
-    .select("*, seasons(*)")
+    .select("*, seasons(*), teams(name)")
     .eq("profile_id", user.id)
     .order("registered_at", { ascending: false })
     .limit(1)

@@ -1,6 +1,10 @@
-import type { Profile, Season, SeasonRegistration } from "@/lib/types";
+import { CaptainBadge } from "@/components/CaptainBadge";
+import type { Profile, Season, SeasonRegistration, Team } from "@/lib/types";
 
-type RegistrationWithSeason = SeasonRegistration & { seasons: Season | null };
+type RegistrationWithSeason = SeasonRegistration & {
+  seasons: Season | null;
+  teams: Pick<Team, "name"> | null;
+};
 
 export function PlayerCard({
   profile,
@@ -31,6 +35,7 @@ export function PlayerCard({
           <p className="text-sm text-muted-foreground">{profile.position.join(" / ")}</p>
         )}
       </div>
+      {registration?.is_captain && <CaptainBadge className="h-20 w-20" />}
       <div className="flex flex-wrap items-center justify-center gap-2">
         {registration?.jersey_number != null && (
           <span className="rounded-full border border-border bg-background px-3 py-1 text-sm font-medium">
@@ -57,16 +62,11 @@ export function PlayerCard({
             Returning Player
           </span>
         )}
-        {registration?.is_captain && (
-          <span className="rounded-full bg-accent px-3 py-1 text-sm font-medium text-accent-foreground">
-            Captain
-          </span>
-        )}
       </div>
       {registration?.seasons && (
         <div className="text-sm text-muted-foreground">
           <p>Registered for {registration.seasons.name}</p>
-          <p>Team: {registration.team_id ? "Assigned" : "Not assigned yet"}</p>
+          <p>Team: {registration.teams?.name ?? "Not assigned yet"}</p>
         </div>
       )}
     </div>
