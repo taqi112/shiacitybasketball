@@ -51,6 +51,12 @@ export default async function AdminSeasonDetailPage({
             >
               Draft Room →
             </Link>
+            <Link
+              href={`/admin/seasons/${id}/awards`}
+              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium"
+            >
+              Awards →
+            </Link>
           </div>
         </div>
         <SeasonEditForm season={season} />
