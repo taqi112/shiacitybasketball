@@ -84,6 +84,8 @@ export interface Game {
   court: string | null;
   home_team_id: string | null;
   away_team_id: string | null;
+  home_score: number | null;
+  away_score: number | null;
   game_type: "regular_season" | "playoff";
   created_at: string;
 }
@@ -114,5 +116,15 @@ export interface LegacySeasonStat {
   steals: number;
   three_pm: number;
   fouls: number | null;
+  created_at: string;
+}
+
+export interface SeasonAward {
+  id: string;
+  season_id: string;
+  award_name: string;
+  profile_id: string | null;
+  recipient_name: string | null;
+  sort_order: number;
   created_at: string;
 }

@@ -5,7 +5,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   await requireAdmin();
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-12">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12">
       <nav className="flex gap-4 text-sm font-medium">
         <Link href="/admin/seasons">Seasons</Link>
       </nav>

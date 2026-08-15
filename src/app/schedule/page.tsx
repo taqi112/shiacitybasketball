@@ -2,8 +2,8 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentSeason } from "@/lib/season";
 import { formatTime } from "@/lib/datetime";
-import { buildTeamColorMap } from "@/lib/teamColors";
 import { ScheduleGameList } from "@/components/schedule/ScheduleGameList";
+import { buildTeamColorsById, type ColorBand } from "@/lib/teamColors";
 import type { Game, Team } from "@/lib/types";
 
 const PLAYOFF_LABELS = ["Round 1", "Semifinals", "Championship"];
@@ -31,20 +31,23 @@ export default async function SchedulePage() {
     .order("draft_position", { ascending: true, nullsFirst: false })
     .overrideTypes<Team[], { merge: false }>();
 
+  // Deterministic tiebreakers -- see the same note in the admin schedule
+  // page -- without them, same-date rows can silently reorder between
+  // requests.
   const { data: games } = await supabase
     .from("games")
     .select("*")
     .eq("season_id", season.id)
     .order("date", { ascending: true })
+    .order("start_time", { ascending: true })
+    .order("court", { ascending: true, nullsFirst: true })
+    .order("id", { ascending: true })
     .overrideTypes<Game[], { merge: false }>();
 
-  const teamColorMap = buildTeamColorMap((teams ?? []).map((t) => t.id));
-  const teamMeta: Record<string, { name: string; bg: string; text: string; hex: string }> = {};
+  const teamColorsById = buildTeamColorsById(teams ?? []);
+  const teamMeta: Record<string, { name: string; colors: ColorBand[] }> = {};
   for (const team of teams ?? []) {
-    const color = teamColorMap.get(team.id);
-    if (color) {
-      teamMeta[team.id] = { name: team.name, bg: color.bg, text: color.text, hex: color.hex };
-    }
+    teamMeta[team.id] = { name: team.name, colors: teamColorsById.get(team.id) ?? [] };
   }
 
   const regularSeasonGames = (games ?? []).filter((g) => g.game_type === "regular_season");

@@ -1,99 +1,48 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service";
+import { getCurrentSeason } from "@/lib/season";
 import { average } from "@/lib/stats";
-import { buildTeamColorMap } from "@/lib/teamColors";
-import type {
-  Season,
-  Game,
-  Profile,
-  SeasonRegistration,
-  Team,
-  GameStat,
-  LegacySeasonStat,
-} from "@/lib/types";
+import { getPlayerPopupDataByProfileId } from "@/lib/playerPopup";
+import { buildTeamColorsById, teamGradient, TEAM_TEXT_SHADOW } from "@/lib/teamColors";
+import { StatsStandingsSubNav } from "@/components/StatsStandingsSubNav";
+import { PlayerNameLink } from "@/components/PlayerNameLink";
+import type { Game, Profile, SeasonRegistration, Team, GameStat } from "@/lib/types";
 
 type RegistrantRow = SeasonRegistration & { profiles: Profile | null; teams: Team | null };
 
-function LegacyStatsTable({ stats }: { stats: LegacySeasonStat[] }) {
-  const groups = new Map<string, LegacySeasonStat[]>();
-  for (const s of stats) {
-    const list = groups.get(s.team_name) ?? [];
-    list.push(s);
-    groups.set(s.team_name, list);
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      {[...groups.entries()].map(([teamName, players]) => (
-        <div key={teamName} className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-2">{teamName}</th>
-                <th className="px-4 py-2">GP</th>
-                <th className="px-4 py-2">PTS</th>
-                <th className="px-4 py-2">REB</th>
-                <th className="px-4 py-2">BLK</th>
-                <th className="px-4 py-2">STL</th>
-                <th className="px-4 py-2">3PM</th>
-                <th className="px-4 py-2">FLS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {players.map((p) => (
-                <tr key={p.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-2">{p.player_name}</td>
-                  <td className="px-4 py-2">{Number(p.games_played)}</td>
-                  <td className="px-4 py-2">{Number(p.points).toFixed(1)}</td>
-                  <td className="px-4 py-2">{Number(p.rebounds).toFixed(1)}</td>
-                  <td className="px-4 py-2">{Number(p.blocks).toFixed(1)}</td>
-                  <td className="px-4 py-2">{Number(p.steals).toFixed(1)}</td>
-                  <td className="px-4 py-2">{Number(p.three_pm).toFixed(1)}</td>
-                  <td className="px-4 py-2">{p.fouls != null ? Number(p.fouls).toFixed(1) : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
-      {!stats.length && <p className="text-sm text-muted-foreground">No stats for this season.</p>}
-    </div>
-  );
-}
-
 async function LiveSeasonStats({ seasonId }: { seasonId: string }) {
-  const supabase = await createClient();
+  // Service-role client -- season_registrations/profiles only have "view
+  // your own row" RLS policies (see supabase/schema.sql), so a normal
+  // per-request client would silently only return the viewing user's own
+  // registration instead of the whole league. Same reasoning as /players
+  // and /draft. games/game_stats are publicly readable either way.
+  const supabase = createServiceRoleClient();
 
-  const [{ data: registrants }, { data: gameStats }, { data: games }, { data: teams }] =
-    await Promise.all([
-      supabase
-        .from("season_registrations")
-        .select("*, profiles(*), teams(*)")
-        .eq("season_id", seasonId)
-        .overrideTypes<RegistrantRow[], { merge: false }>(),
-      supabase
-        .from("game_stats")
-        .select("*")
-        .eq("season_id", seasonId)
-        .overrideTypes<GameStat[], { merge: false }>(),
-      supabase
-        .from("games")
-        .select("*")
-        .eq("season_id", seasonId)
-        .order("date", { ascending: true })
-        .overrideTypes<Game[], { merge: false }>(),
-      supabase
-        .from("teams")
-        .select("*")
-        .eq("season_id", seasonId)
-        .order("draft_position", { ascending: true, nullsFirst: false })
-        .overrideTypes<Team[], { merge: false }>(),
-    ]);
+  const [{ data: registrants }, { data: gameStats }, { data: games }] = await Promise.all([
+    supabase
+      .from("season_registrations")
+      .select("*, profiles(*), teams(*)")
+      .eq("season_id", seasonId)
+      .overrideTypes<RegistrantRow[], { merge: false }>(),
+    supabase
+      .from("game_stats")
+      .select("*")
+      .eq("season_id", seasonId)
+      .overrideTypes<GameStat[], { merge: false }>(),
+    supabase
+      .from("games")
+      .select("*")
+      .eq("season_id", seasonId)
+      .order("date", { ascending: true })
+      .order("start_time", { ascending: true })
+      .order("id", { ascending: true })
+      .overrideTypes<Game[], { merge: false }>(),
+  ]);
 
-  // Same palette + assignment order (draft_position) as the schedule and
-  // Teams pages, so a given team is always the same color everywhere.
-  const teamColorMap = buildTeamColorMap((teams ?? []).map((t) => t.id));
+  const popupDataByProfile = await getPlayerPopupDataByProfileId(
+    (registrants ?? []).map((r) => r.profile_id),
+  );
 
   const statsByRegistration = new Map<string, GameStat[]>();
   for (const stat of gameStats ?? []) {
@@ -102,45 +51,81 @@ async function LiveSeasonStats({ seasonId }: { seasonId: string }) {
     statsByRegistration.set(stat.registration_id, list);
   }
 
-  const groups = new Map<string, { teamId: string | null; registrants: RegistrantRow[] }>();
+  const groups = new Map<string, { team: Team | null; registrants: RegistrantRow[] }>();
   for (const r of registrants ?? []) {
     const teamName = r.teams?.name ?? "Unassigned";
-    const group = groups.get(teamName) ?? { teamId: r.teams?.id ?? null, registrants: [] };
+    const group = groups.get(teamName) ?? { team: r.teams, registrants: [] };
     group.registrants.push(r);
     groups.set(teamName, group);
   }
 
+  const uniqueTeams = [...groups.values()]
+    .map((g) => g.team)
+    .filter((t): t is Team => t != null);
+  const teamColorsById = buildTeamColorsById(uniqueTeams);
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-6">
-        {[...groups.entries()].map(([teamName, { teamId, registrants: teamRegistrants }]) => {
-          const color = teamId ? teamColorMap.get(teamId) : undefined;
+        {[...groups.entries()].map(([teamName, { team, registrants: teamRegistrants }]) => {
+          const colors = team ? (teamColorsById.get(team.id) ?? []) : [];
           return (
-            <div key={teamName} className="overflow-hidden rounded-lg border border-border">
-              <table className="w-full text-left text-sm">
+            <div
+              key={teamName}
+              className="overflow-hidden rounded-lg border border-border"
+              style={
+                colors.length
+                  ? {
+                      // A flat dark scrim layered over the full team gradient
+                      // (not a fade-to-solid) -- keeps the blend visible
+                      // the whole way down the card instead of the gradient
+                      // getting swallowed by an opaque background after the
+                      // first row or two, while still giving the stat text
+                      // enough contrast to read.
+                      background: `linear-gradient(rgba(10,10,10,0.55), rgba(10,10,10,0.55)), ${teamGradient(colors, "to bottom")}`,
+                    }
+                  : undefined
+              }
+            >
+              <table className="w-full table-fixed text-left text-sm">
+                <colgroup>
+                  <col />
+                  <col className="w-14" />
+                  <col className="w-14" />
+                  <col className="w-14" />
+                  <col className="w-14" />
+                  <col className="w-14" />
+                  <col className="w-14" />
+                </colgroup>
                 <thead>
-                  <tr className={color ? `${color.bg} ${color.text}` : "border-b border-border"}>
-                    <th className="px-4 py-2 font-display tracking-wide uppercase">{teamName}</th>
-                    <th className="px-4 py-2">GP</th>
-                    <th className="px-4 py-2">PTS</th>
-                    <th className="px-4 py-2">REB</th>
-                    <th className="px-4 py-2">BLK</th>
-                    <th className="px-4 py-2">STL</th>
-                    <th className="px-4 py-2">3PM</th>
+                  <tr className="border-b border-white/15">
+                    <th
+                      className="px-4 py-2 text-base font-bold tracking-wide text-white uppercase"
+                      style={colors.length ? { textShadow: TEAM_TEXT_SHADOW } : undefined}
+                    >
+                      {teamName}
+                    </th>
+                    <th className="px-4 py-2 text-white/80">GP</th>
+                    <th className="px-4 py-2 text-white/80">PTS</th>
+                    <th className="px-4 py-2 text-white/80">REB</th>
+                    <th className="px-4 py-2 text-white/80">BLK</th>
+                    <th className="px-4 py-2 text-white/80">STL</th>
+                    <th className="px-4 py-2 text-white/80">3PM</th>
                   </tr>
                 </thead>
-                <tbody
-                  style={
-                    color
-                      ? { background: `linear-gradient(to bottom, ${color.hex}33, var(--surface) 60%)` }
-                      : undefined
-                  }
-                >
+                <tbody className={colors.length ? "text-white" : undefined}>
                   {teamRegistrants.map((r) => {
                     const rows = statsByRegistration.get(r.id) ?? [];
                     return (
                       <tr key={r.id} className="border-b border-border last:border-0">
-                        <td className="px-4 py-2">{r.profiles?.full_name}</td>
+                        <td className="px-4 py-2">
+                          {r.profiles && (
+                            <PlayerNameLink
+                              name={r.profiles.full_name}
+                              data={popupDataByProfile[r.profile_id]}
+                            />
+                          )}
+                        </td>
                         <td className="px-4 py-2">{rows.length}</td>
                         <td className="px-4 py-2">{average(rows, "points")?.toFixed(1) ?? "—"}</td>
                         <td className="px-4 py-2">
@@ -191,70 +176,25 @@ async function LiveSeasonStats({ seasonId }: { seasonId: string }) {
   );
 }
 
-export default async function StatsPage({ searchParams }: PageProps<"/stats">) {
+export default async function StatsPage() {
   await requireUser();
-  const params = await searchParams;
-  const seasonParam = Array.isArray(params.season) ? params.season[0] : params.season;
 
-  const supabase = await createClient();
-
-  const [{ data: seasons }, { data: legacyStats }] = await Promise.all([
-    supabase
-      .from("seasons")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .overrideTypes<Season[], { merge: false }>(),
-    supabase
-      .from("legacy_season_stats")
-      .select("*")
-      .overrideTypes<LegacySeasonStat[], { merge: false }>(),
-  ]);
-
-  const legacyLabels = [...new Set((legacyStats ?? []).map((s) => s.season_label))];
-
-  const tabs = [
-    ...(seasons ?? []).map((s) => ({ key: s.id, label: s.name, kind: "live" as const })),
-    ...legacyLabels.map((label) => ({ key: label, label, kind: "legacy" as const })),
-  ];
-
-  if (!tabs.length) {
+  const season = await getCurrentSeason();
+  if (!season) {
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-12">
+        <StatsStandingsSubNav active="stats" />
         <h1 className="text-xl font-semibold">Stats</h1>
-        <p className="text-sm text-muted-foreground">No stats available yet.</p>
+        <p className="text-sm text-muted-foreground">No season has been set up yet.</p>
       </div>
     );
   }
 
-  const activeKey = tabs.some((t) => t.key === seasonParam) ? seasonParam! : tabs[0].key;
-  const activeTab = tabs.find((t) => t.key === activeKey)!;
-
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-12">
-      <h1 className="text-xl font-semibold">Stats</h1>
-      <div className="flex flex-wrap gap-2 border-b border-border pb-4">
-        {tabs.map((tab) => (
-          <Link
-            key={tab.key}
-            href={`/stats?season=${encodeURIComponent(tab.key)}`}
-            className={
-              tab.key === activeKey
-                ? "rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-accent-foreground"
-                : "rounded-full border border-border px-4 py-1.5 text-sm text-muted-foreground"
-            }
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </div>
-
-      {activeTab.kind === "legacy" ? (
-        <LegacyStatsTable
-          stats={(legacyStats ?? []).filter((s) => s.season_label === activeTab.key)}
-        />
-      ) : (
-        <LiveSeasonStats seasonId={activeTab.key} />
-      )}
+      <StatsStandingsSubNav active="stats" />
+      <h1 className="text-xl font-semibold">{season.name} Stats</h1>
+      <LiveSeasonStats seasonId={season.id} />
     </div>
   );
 }

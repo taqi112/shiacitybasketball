@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CreateGameForm } from "./CreateGameForm";
+import { GameScoreInputs } from "./GameScoreInputs";
 import { deleteGame } from "./actions";
 import { formatTime } from "@/lib/datetime";
 import type { Season, Game, Team } from "@/lib/types";
@@ -27,11 +28,19 @@ export default async function AdminSchedulePage({
     .order("draft_position", { ascending: true, nullsFirst: false })
     .overrideTypes<Team[], { merge: false }>();
 
+  // Multiple games share the same date, and Postgres doesn't guarantee a
+  // stable order for ties on a single sort column -- without a fully
+  // deterministic sort, same-date rows could come back in a different order
+  // on every request (e.g. right after saving a score triggers a refetch),
+  // making rows appear to randomly reorder.
   const { data: games } = await supabase
     .from("games")
     .select("*")
     .eq("season_id", id)
     .order("date", { ascending: true })
+    .order("start_time", { ascending: true })
+    .order("court", { ascending: true, nullsFirst: true })
+    .order("id", { ascending: true })
     .overrideTypes<Game[], { merge: false }>();
 
   const teamNameById = new Map((teams ?? []).map((t) => [t.id, t.name]));
@@ -48,6 +57,7 @@ export default async function AdminSchedulePage({
               <th className="px-4 py-2">Venue</th>
               <th className="px-4 py-2">Court</th>
               <th className="px-4 py-2">Matchup</th>
+              <th className="px-4 py-2">Score</th>
               <th className="px-4 py-2">Type</th>
               <th className="px-4 py-2"></th>
               <th className="px-4 py-2"></th>
@@ -56,14 +66,14 @@ export default async function AdminSchedulePage({
           <tbody>
             {games?.map((game) => (
               <tr key={game.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 whitespace-nowrap">
                   {new Date(`${game.date}T00:00:00`).toLocaleDateString(undefined, {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
                   })}
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 whitespace-nowrap">
                   {formatTime(game.start_time)}–{formatTime(game.end_time)}
                 </td>
                 <td className="px-4 py-2">{game.venue}</td>
@@ -72,6 +82,18 @@ export default async function AdminSchedulePage({
                   {game.home_team_id || game.away_team_id
                     ? `${game.home_team_id ? (teamNameById.get(game.home_team_id) ?? "—") : "TBD"} vs ${game.away_team_id ? (teamNameById.get(game.away_team_id) ?? "—") : "TBD"}`
                     : "—"}
+                </td>
+                <td className="px-4 py-2">
+                  {game.home_team_id && game.away_team_id ? (
+                    <GameScoreInputs
+                      gameId={game.id}
+                      seasonId={id}
+                      homeScore={game.home_score}
+                      awayScore={game.away_score}
+                    />
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td className="px-4 py-2">
                   {game.game_type === "playoff" ? "Playoff" : "Regular Season"}
@@ -100,7 +122,7 @@ export default async function AdminSchedulePage({
             ))}
             {!games?.length && (
               <tr>
-                <td className="px-4 py-2 text-muted-foreground" colSpan={8}>
+                <td className="px-4 py-2 text-muted-foreground" colSpan={9}>
                   No games scheduled yet.
                 </td>
               </tr>

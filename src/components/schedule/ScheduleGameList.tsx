@@ -2,19 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { formatTime } from "@/lib/datetime";
+import { primaryHex, type ColorBand } from "@/lib/teamColors";
 import type { Game } from "@/lib/types";
 
-type TeamMeta = { name: string; bg: string; text: string; hex: string };
+type TeamMeta = { name: string; colors: ColorBand[] };
 
-// Full team color at each edge, fading through the card's own surface color
-// by the midpoint -- a colored glow rather than a solid block, so the court
-// badge/time text sitting near the edges stay readable. "44" is a hex alpha
-// suffix (~27% opacity).
-function rowGradient(homeHex: string | undefined, awayHex: string | undefined): string {
-  const left = homeHex ? `${homeHex}44` : "var(--surface)";
-  const right = awayHex ? `${awayHex}44` : "var(--surface)";
-  return `linear-gradient(to right, ${left} 0%, var(--surface) 50%, ${right} 100%)`;
-}
+const WIN_COLOR = "#4ade80";
+const LOSS_COLOR = "#f87171";
 
 function TeamPill({
   teamId,
@@ -25,17 +19,24 @@ function TeamPill({
 }) {
   if (!teamId || !teamMeta[teamId]) {
     return (
-      <span className="rounded-full border border-border px-3 py-1 text-sm text-muted-foreground">
+      <span className="rounded-md border border-white/15 bg-black/40 px-3 py-1 text-sm text-white/50">
         TBD
       </span>
     );
   }
   const meta = teamMeta[teamId];
   return (
-    <span className={`rounded-full px-3 py-1 text-sm font-semibold ${meta.bg} ${meta.text}`}>
+    <span className="px-3 py-1 text-base font-bold tracking-wide text-white uppercase">
       {meta.name}
     </span>
   );
+}
+
+// Always each team's own primary jersey color, fading to the card's normal
+// surface color by the middle. The win/loss signal lives in the score
+// numbers themselves, not the row background.
+function rowBackground(leftHex: string, rightHex: string): string {
+  return `linear-gradient(to right, ${leftHex}55 0%, var(--surface) 50%, ${rightHex}55 100%)`;
 }
 
 export function ScheduleGameList({
@@ -171,30 +172,70 @@ export function ScheduleGameList({
               })}
             </h3>
             <div className="flex flex-col gap-2">
-              {dateGames.map((g) => (
-                <div
-                  key={g.id}
-                  className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
-                  style={{
-                    background: rowGradient(
-                      g.home_team_id ? teamMeta[g.home_team_id]?.hex : undefined,
-                      g.away_team_id ? teamMeta[g.away_team_id]?.hex : undefined,
-                    ),
-                  }}
-                >
-                  <span className="rounded-md border border-border px-2 py-1 text-xs font-mono text-muted-foreground">
-                    {g.court ?? "TBD"}
-                  </span>
-                  <div className="flex flex-1 items-center justify-center gap-3">
-                    <TeamPill teamId={g.home_team_id} teamMeta={teamMeta} />
-                    <span className="text-xs font-bold text-muted-foreground">VS</span>
-                    <TeamPill teamId={g.away_team_id} teamMeta={teamMeta} />
+              {dateGames.map((g) => {
+                const played = g.home_score != null && g.away_score != null;
+                const tie = played && g.home_score === g.away_score;
+                const homeWon = played && !tie && g.home_score! > g.away_score!;
+                const awayWon = played && !tie && g.away_score! > g.home_score!;
+
+                const homeColors = g.home_team_id ? teamMeta[g.home_team_id]?.colors : undefined;
+                const awayColors = g.away_team_id ? teamMeta[g.away_team_id]?.colors : undefined;
+
+                const leftHex = homeColors ? primaryHex(homeColors) : "#3f3f46";
+                const rightHex = awayColors ? primaryHex(awayColors) : "#3f3f46";
+
+                return (
+                  <div
+                    key={g.id}
+                    className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
+                    style={{ background: rowBackground(leftHex, rightHex) }}
+                  >
+                    <span className="rounded-md border border-white/15 bg-black/40 px-2 py-1 text-xs font-mono text-white/70">
+                      {g.court ?? "TBD"}
+                    </span>
+                    <div className="grid flex-1 grid-cols-[1fr_auto_1fr] items-center gap-3">
+                      <div className="relative justify-self-end">
+                        {homeWon && (
+                          <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-base leading-none">
+                            👑
+                          </span>
+                        )}
+                        <TeamPill teamId={g.home_team_id} teamMeta={teamMeta} />
+                      </div>
+                      <div className="flex h-9 w-28 items-center justify-center">
+                        {played ? (
+                          <span className="flex items-center gap-3 font-mono text-3xl font-semibold tracking-tight tabular-nums">
+                            <span
+                              style={{ color: tie ? "#fff" : homeWon ? WIN_COLOR : LOSS_COLOR }}
+                            >
+                              {g.home_score}
+                            </span>
+                            <span className="text-base text-white/50">–</span>
+                            <span
+                              style={{ color: tie ? "#fff" : awayWon ? WIN_COLOR : LOSS_COLOR }}
+                            >
+                              {g.away_score}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-white/80">VS</span>
+                        )}
+                      </div>
+                      <div className="relative justify-self-start">
+                        {awayWon && (
+                          <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-base leading-none">
+                            👑
+                          </span>
+                        )}
+                        <TeamPill teamId={g.away_team_id} teamMeta={teamMeta} />
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium text-white/70">
+                      {formatTime(g.start_time)}–{formatTime(g.end_time)}
+                    </span>
                   </div>
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {formatTime(g.start_time)}–{formatTime(g.end_time)}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}

@@ -46,6 +46,34 @@ export async function createGame(
   return undefined;
 }
 
+export async function updateGameScore(
+  _prevState: ScheduleActionState,
+  formData: FormData,
+): Promise<ScheduleActionState> {
+  await requireAdmin();
+
+  const gameId = String(formData.get("gameId") ?? "");
+  const seasonId = String(formData.get("seasonId") ?? "");
+  const homeScoreRaw = String(formData.get("homeScore") ?? "").trim();
+  const awayScoreRaw = String(formData.get("awayScore") ?? "").trim();
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("games")
+    .update({
+      home_score: homeScoreRaw ? Number(homeScoreRaw) : null,
+      away_score: awayScoreRaw ? Number(awayScoreRaw) : null,
+    })
+    .eq("id", gameId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/seasons/${seasonId}/schedule`);
+  revalidatePath("/schedule");
+  revalidatePath("/standings");
+  return undefined;
+}
+
 export async function deleteGame(formData: FormData) {
   await requireAdmin();
 

@@ -62,6 +62,8 @@ export default async function Home() {
       .eq("season_id", currentSeason.id)
       .gte("date", today)
       .order("date", { ascending: true })
+      .order("start_time", { ascending: true })
+      .order("id", { ascending: true })
       .limit(3)
       .overrideTypes<Game[], { merge: false }>();
     upcomingGames = data ?? [];

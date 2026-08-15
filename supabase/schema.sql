@@ -924,3 +924,49 @@ create trigger protect_self_rank_trigger
 alter table public.games add column court text;
 alter table public.games add column home_team_id uuid references public.teams(id);
 alter table public.games add column away_team_id uuid references public.teams(id);
+
+-- Nullable -- null means the game hasn't been played yet. No separate W/L
+-- column; that's always derived by comparing the two scores, never stored
+-- redundantly.
+alter table public.games add column home_score int;
+alter table public.games add column away_score int;
+
+-- ===================== Phase 5: awards =====================
+
+-- Admin-curated end-of-season awards (All-Shia City 1st/2nd Team, MVP,
+-- Rookie of the Year, Coach of the Year, etc.) -- deliberately not
+-- auto-computed from stats, since real awards mix stat leaders with
+-- subjective picks. Multiple rows sharing the same award_name render as one
+-- multi-recipient award (e.g. a 5-player "1st Team"); a single row is a
+-- solo award (e.g. MVP). recipient_name is a free-text fallback for
+-- recipients with no profile (e.g. a coach) -- profile_id is preferred when
+-- the recipient is a registered player, since it lets the page pull their
+-- photo/team/stats live instead of duplicating them here.
+create table public.season_awards (
+  id uuid primary key default gen_random_uuid(),
+  season_id uuid not null references public.seasons(id) on delete cascade,
+  award_name text not null,
+  profile_id uuid references public.profiles(id) on delete set null,
+  recipient_name text,
+  sort_order int not null default 0,
+  created_at timestamptz not null default now(),
+  check (profile_id is not null or recipient_name is not null)
+);
+
+alter table public.season_awards enable row level security;
+
+create policy "Awards are viewable by everyone"
+  on public.season_awards for select
+  using (true);
+
+create policy "Admins can insert awards"
+  on public.season_awards for insert
+  with check (public.is_admin());
+
+create policy "Admins can update awards"
+  on public.season_awards for update
+  using (public.is_admin());
+
+create policy "Admins can delete awards"
+  on public.season_awards for delete
+  using (public.is_admin());
